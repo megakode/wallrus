@@ -166,7 +166,14 @@ impl WallrusWindow {
         let palette_group = adw::PreferencesGroup::new();
         palette_group.set_title("Palette");
         palette_group.add(&category_row);
-        palette_group.add(&palette_scroll);
+
+        // Wrap the scrollable FlowBox in a ListBoxRow so it sits inside the
+        // PreferencesGroup's rounded rectangle together with the category dropdown
+        let palette_listbox_row = gtk4::ListBoxRow::new();
+        palette_listbox_row.set_child(Some(&palette_scroll));
+        palette_listbox_row.set_activatable(false);
+        palette_listbox_row.set_selectable(false);
+        palette_group.add(&palette_listbox_row);
 
         // =====================================================================
         // Shader parameter sliders
