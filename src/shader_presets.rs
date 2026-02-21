@@ -34,6 +34,10 @@ pub struct PresetControls {
     pub has_angle: bool,
     pub has_scale: bool,
     pub has_speed: bool,
+    /// Label for the speed/time slider (e.g. "Speed" or "Time")
+    pub speed_label: &'static str,
+    /// Range for the speed/time slider: (min, max, step, default)
+    pub speed_range: (f64, f64, f64, f64),
 }
 
 pub fn controls_for(name: &str) -> PresetControls {
@@ -42,21 +46,29 @@ pub fn controls_for(name: &str) -> PresetControls {
             has_angle: true,
             has_scale: false,
             has_speed: false,
+            speed_label: "Speed",
+            speed_range: (0.0, 3.0, 0.1, 1.0),
         },
         "Plasma" => PresetControls {
             has_angle: false,
             has_scale: true,
             has_speed: true,
+            speed_label: "Time",
+            speed_range: (0.0, 20.0, 0.1, 0.0),
         },
         "Waves" => PresetControls {
             has_angle: true,
             has_scale: true,
             has_speed: true,
+            speed_label: "Time",
+            speed_range: (0.0, 20.0, 0.1, 0.0),
         },
         _ => PresetControls {
             has_angle: true,
             has_scale: false,
             has_speed: false,
+            speed_label: "Speed",
+            speed_range: (0.0, 3.0, 0.1, 1.0),
         },
     }
 }
@@ -77,6 +89,16 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
+uniform float uSwirl;
+
+vec2 swirlUV(vec2 uv) {
+    vec2 c = uv - 0.5;
+    float r = length(c);
+    float angle = uSwirl * (1.0 - r);
+    float ca = cos(angle);
+    float sa = sin(angle);
+    return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
 
 vec3 paletteColor(float t) {
     t = clamp(t, 0.0, 1.0);
@@ -99,7 +121,7 @@ vec3 paletteColor(float t) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
     // Rotate the gradient direction
     vec2 dir = vec2(cos(uAngle), sin(uAngle));
     float t = dot(uv - 0.5, dir) + 0.5;
@@ -123,6 +145,16 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
+uniform float uSwirl;
+
+vec2 swirlUV(vec2 uv) {
+    vec2 c = uv - 0.5;
+    float r = length(c);
+    float angle = uSwirl * (1.0 - r);
+    float ca = cos(angle);
+    float sa = sin(angle);
+    return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
 
 vec3 paletteColor(float t) {
     t = clamp(t, 0.0, 1.0);
@@ -141,8 +173,8 @@ vec3 paletteColor(float t) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    float time = iTime * uSpeed * 0.5;
+    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    float time = uSpeed;
 
     float v = 0.0;
     vec2 p = (uv - 0.5) * uScale * 10.0;
@@ -178,6 +210,16 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
+uniform float uSwirl;
+
+vec2 swirlUV(vec2 uv) {
+    vec2 c = uv - 0.5;
+    float r = length(c);
+    float angle = uSwirl * (1.0 - r);
+    float ca = cos(angle);
+    float sa = sin(angle);
+    return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
 
 vec3 paletteColor(float t) {
     t = clamp(t, 0.0, 1.0);
@@ -196,8 +238,8 @@ vec3 paletteColor(float t) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    float time = iTime * uSpeed * 0.5;
+    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    float time = uSpeed;
 
     // Rotate UV
     vec2 center = uv - 0.5;

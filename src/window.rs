@@ -27,21 +27,18 @@ impl WallrusWindow {
 
         // --- GL preview area ---
         let gl_area = gl_renderer::create_gl_area(state.clone());
-        gl_area.set_size_request(640, 360);
+        gl_area.set_size_request(320, 180);
 
         // Wrap in an AspectFrame so the preview keeps 16:9
         let aspect_frame = gtk4::AspectFrame::new(0.5, 0.5, 16.0 / 9.0, false);
         aspect_frame.set_child(Some(&gl_area));
         aspect_frame.set_vexpand(true);
 
-        // Frame around the preview for visual separation
-        let preview_frame = gtk4::Frame::new(None);
-        preview_frame.set_child(Some(&aspect_frame));
-        preview_frame.set_margin_start(12);
-        preview_frame.set_margin_end(12);
-        preview_frame.set_margin_top(6);
-        preview_frame.set_margin_bottom(6);
-        preview_frame.set_vexpand(true);
+        // Preview group — matches PreferencesGroup styling used on the left column
+        let preview_group = adw::PreferencesGroup::new();
+        preview_group.set_title("Preview");
+        preview_group.add(&aspect_frame);
+        preview_group.set_vexpand(true);
 
         // --- Shader preset dropdown ---
         let preset_names = shader_presets::preset_names();
@@ -215,6 +212,16 @@ impl WallrusWindow {
         let blend_row = adw::ActionRow::builder().title("Blend").build();
         blend_row.add_suffix(&blend_scale);
 
+        // --- Swirl slider ---
+        let swirl_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -10.0, 10.0, 0.1);
+        swirl_scale.set_value(0.0);
+        swirl_scale.set_hexpand(true);
+        swirl_scale.set_draw_value(true);
+        swirl_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let swirl_row = adw::ActionRow::builder().title("Swirl").build();
+        swirl_row.add_suffix(&swirl_scale);
+
         // --- Controls group ---
         let controls_group = adw::PreferencesGroup::new();
         controls_group.set_title("Shader");
@@ -223,6 +230,7 @@ impl WallrusWindow {
         controls_group.add(&scale_row);
         controls_group.add(&speed_row);
         controls_group.add(&blend_row);
+        controls_group.add(&swirl_row);
 
         // =====================================================================
         // Export section
@@ -265,34 +273,45 @@ impl WallrusWindow {
         export_group.add(&resolution_row);
 
         // =====================================================================
-        // Layout
+        // Layout — two columns: controls (left), preview + export (right)
         // =====================================================================
 
-        let controls_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
-        controls_box.set_margin_start(12);
-        controls_box.set_margin_end(12);
-        controls_box.set_margin_bottom(12);
-        controls_box.append(&palette_group);
-        controls_box.append(&controls_group);
-        controls_box.append(&export_group);
-        controls_box.append(&button_box);
+        // Left column: palette + shader controls (scrollable)
+        let left_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+        left_box.set_margin_start(12);
+        left_box.set_margin_end(6);
+        left_box.set_margin_top(0);
+        left_box.set_margin_bottom(12);
+        left_box.append(&palette_group);
+        left_box.append(&controls_group);
 
-        let clamp = adw::Clamp::new();
-        clamp.set_maximum_size(600);
-        clamp.set_child(Some(&controls_box));
+        let left_scroll = gtk4::ScrolledWindow::new();
+        left_scroll.set_child(Some(&left_box));
+        left_scroll.set_vexpand(true);
+        left_scroll.set_hscrollbar_policy(gtk4::PolicyType::Never);
+        left_scroll.set_propagate_natural_height(true);
+        left_scroll.set_min_content_width(320);
 
-        let content_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-        content_box.append(&preview_frame);
-        content_box.append(&clamp);
+        // Right column: preview + export
+        let right_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+        right_box.set_margin_start(6);
+        right_box.set_margin_end(12);
+        right_box.set_margin_top(0);
+        right_box.set_margin_bottom(12);
+        right_box.set_hexpand(true);
+        right_box.append(&preview_group);
+        right_box.append(&export_group);
+        right_box.append(&button_box);
 
-        let scrolled = gtk4::ScrolledWindow::new();
-        scrolled.set_child(Some(&content_box));
-        scrolled.set_vexpand(true);
-        scrolled.set_propagate_natural_height(true);
+        // Two-column horizontal layout
+        let columns_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        columns_box.set_vexpand(true);
+        columns_box.append(&left_scroll);
+        columns_box.append(&right_box);
 
         let toolbar_view = adw::ToolbarView::new();
         toolbar_view.add_top_bar(&header);
-        toolbar_view.set_content(Some(&scrolled));
+        toolbar_view.set_content(Some(&columns_box));
 
         let toast_overlay = adw::ToastOverlay::new();
         toast_overlay.set_child(Some(&toolbar_view));
@@ -300,8 +319,8 @@ impl WallrusWindow {
         let window = adw::ApplicationWindow::builder()
             .application(app)
             .title("Wallrus")
-            .default_width(720)
-            .default_height(1000)
+            .default_width(1100)
+            .default_height(700)
             .content(&toast_overlay)
             .build();
 
@@ -361,11 +380,18 @@ impl WallrusWindow {
             let angle_row = angle_row.clone();
             let scale_row = scale_row.clone();
             let speed_row = speed_row.clone();
+            let speed_scale = speed_scale.clone();
             move |name: &str| {
                 let controls = shader_presets::controls_for(name);
                 angle_row.set_visible(controls.has_angle);
                 scale_row.set_visible(controls.has_scale);
                 speed_row.set_visible(controls.has_speed);
+                // Update speed/time slider label and range per preset
+                speed_row.set_title(controls.speed_label);
+                let (min, max, step, default) = controls.speed_range;
+                speed_scale.set_range(min, max);
+                speed_scale.set_increments(step, step * 10.0);
+                speed_scale.set_value(default);
             }
         };
 
@@ -427,6 +453,16 @@ impl WallrusWindow {
             blend_scale.connect_value_changed(move |scale| {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.blend = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Swirl change ---
+        {
+            let state = state.clone();
+            swirl_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.swirl = scale.value() as f32;
                 }
             });
         }
