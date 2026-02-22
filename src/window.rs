@@ -219,14 +219,37 @@ impl WallrusWindow {
         let blend_row = adw::ActionRow::builder().title("Blend").build();
         blend_row.add_suffix(&blend_scale);
 
+        // Hint labels below the blend slider
+        let blend_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let hard_label = gtk4::Label::new(Some("hard"));
+        hard_label.add_css_class("dim-label");
+        hard_label.add_css_class("caption");
+        hard_label.set_halign(gtk4::Align::Start);
+        hard_label.set_hexpand(true);
+        let smooth_label = gtk4::Label::new(Some("smooth"));
+        smooth_label.add_css_class("dim-label");
+        smooth_label.add_css_class("caption");
+        smooth_label.set_halign(gtk4::Align::End);
+        blend_hints.append(&hard_label);
+        blend_hints.append(&smooth_label);
+        blend_hints.set_margin_start(12);
+        blend_hints.set_margin_end(12);
+        blend_hints.set_margin_bottom(4);
+
+        let blend_hint_row = gtk4::ListBoxRow::new();
+        blend_hint_row.set_child(Some(&blend_hints));
+        blend_hint_row.set_activatable(false);
+        blend_hint_row.set_selectable(false);
+
         // --- Controls group ---
         let controls_group = adw::PreferencesGroup::new();
-        controls_group.set_title("Shader");
+        controls_group.set_title("Pattern");
         controls_group.add(&preset_row);
         controls_group.add(&angle_row);
         controls_group.add(&scale_row);
         controls_group.add(&speed_row);
         controls_group.add(&blend_row);
+        controls_group.add(&blend_hint_row);
 
         // =====================================================================
         // Effects section — fullscreen effects applied to all shaders
@@ -242,8 +265,30 @@ impl WallrusWindow {
         let swirl_row = adw::ActionRow::builder().title("Swirl").build();
         swirl_row.add_suffix(&swirl_scale);
 
+        // Hint labels below the swirl slider
+        let swirl_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let left_label = gtk4::Label::new(Some("left"));
+        left_label.add_css_class("dim-label");
+        left_label.add_css_class("caption");
+        left_label.set_halign(gtk4::Align::Start);
+        left_label.set_hexpand(true);
+        let right_label = gtk4::Label::new(Some("right"));
+        right_label.add_css_class("dim-label");
+        right_label.add_css_class("caption");
+        right_label.set_halign(gtk4::Align::End);
+        swirl_hints.append(&left_label);
+        swirl_hints.append(&right_label);
+        swirl_hints.set_margin_start(12);
+        swirl_hints.set_margin_end(12);
+        swirl_hints.set_margin_bottom(4);
+
+        let swirl_hint_row = gtk4::ListBoxRow::new();
+        swirl_hint_row.set_child(Some(&swirl_hints));
+        swirl_hint_row.set_activatable(false);
+        swirl_hint_row.set_selectable(false);
+
         // --- Noise slider ---
-        let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+        let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -1.0, 1.0, 0.01);
         noise_scale.set_value(0.0);
         noise_scale.set_hexpand(true);
         noise_scale.set_draw_value(true);
@@ -252,10 +297,34 @@ impl WallrusWindow {
         let noise_row = adw::ActionRow::builder().title("Noise").build();
         noise_row.add_suffix(&noise_scale);
 
+        // Hint labels below the noise slider
+        let noise_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let darker_label = gtk4::Label::new(Some("darker"));
+        darker_label.add_css_class("dim-label");
+        darker_label.add_css_class("caption");
+        darker_label.set_halign(gtk4::Align::Start);
+        darker_label.set_hexpand(true);
+        let lighter_label = gtk4::Label::new(Some("lighter"));
+        lighter_label.add_css_class("dim-label");
+        lighter_label.add_css_class("caption");
+        lighter_label.set_halign(gtk4::Align::End);
+        noise_hints.append(&darker_label);
+        noise_hints.append(&lighter_label);
+        noise_hints.set_margin_start(12);
+        noise_hints.set_margin_end(12);
+        noise_hints.set_margin_bottom(4);
+
+        let noise_hint_row = gtk4::ListBoxRow::new();
+        noise_hint_row.set_child(Some(&noise_hints));
+        noise_hint_row.set_activatable(false);
+        noise_hint_row.set_selectable(false);
+
         let effects_group = adw::PreferencesGroup::new();
         effects_group.set_title("Effects");
         effects_group.add(&swirl_row);
+        effects_group.add(&swirl_hint_row);
         effects_group.add(&noise_row);
+        effects_group.add(&noise_hint_row);
 
         // =====================================================================
         // Export section
@@ -405,6 +474,7 @@ impl WallrusWindow {
         let update_control_visibility = {
             let angle_row = angle_row.clone();
             let scale_row = scale_row.clone();
+            let scale_scale = scale_scale.clone();
             let speed_row = speed_row.clone();
             let speed_scale = speed_scale.clone();
             move |name: &str| {
@@ -412,6 +482,11 @@ impl WallrusWindow {
                 angle_row.set_visible(controls.has_angle);
                 scale_row.set_visible(controls.has_scale);
                 speed_row.set_visible(controls.has_speed);
+                // Update scale slider range per preset
+                let (smin, smax, sstep, sdefault) = controls.scale_range;
+                scale_scale.set_range(smin, smax);
+                scale_scale.set_increments(sstep, sstep * 10.0);
+                scale_scale.set_value(sdefault);
                 // Update speed/time slider label and range per preset
                 speed_row.set_title(controls.speed_label);
                 let (min, max, step, default) = controls.speed_range;
