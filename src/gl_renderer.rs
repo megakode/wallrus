@@ -387,8 +387,9 @@ pub fn create_gl_area(state: SharedRendererState) -> GLArea {
     // Render callback
     let state_render = state.clone();
     gl_area.connect_render(move |area, _ctx| {
-        let width = area.width();
-        let height = area.height();
+        let scale = area.scale_factor();
+        let width = area.width() * scale;
+        let height = area.height() * scale;
 
         if let Some(ref renderer) = *state_render.borrow() {
             renderer.render(width, height);
