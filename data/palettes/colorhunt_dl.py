@@ -2,7 +2,8 @@
 """
 ColorHunt Palette Downloader
 
-Crawls colorhunt.co and generates 400x400 palette images locally from hex codes to not hammer their download.
+Crawls colorhunt.co and generates 1x4 palette images locally from hex codes to not hammer their download.
+Each image is 1 pixel wide and 4 pixels tall — one pixel per color, top to bottom.
 
 Usage:
     python colorhunt_dl.py pastel                    # download 100 pastel palettes
@@ -32,15 +33,13 @@ except ImportError:
     sys.exit(1)
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image
 except ImportError:
     print("Error: 'Pillow' package is required. Install with: pip install Pillow")
     sys.exit(1)
 
 
 FEED_URL = "https://colorhunt.co/php/feed.php"
-IMAGE_SIZE = 400
-BAND_HEIGHT = IMAGE_SIZE // 4
 
 CATEGORIES = [
     "pastel", "vintage", "retro", "neon", "gold", "light", "dark", "warm",
@@ -68,13 +67,13 @@ def parse_palette_code(code: str) -> list[str]:
 
 
 def generate_palette_image(colors: list[str], filepath: Path) -> None:
-    """Generate a 400x400 PNG with 4 horizontal color bands."""
-    img = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE))
-    draw = ImageDraw.Draw(img)
+    """Generate a 1x4 PNG with one pixel per color (top to bottom)."""
+    img = Image.new("RGB", (1, 4))
     for i, color in enumerate(colors):
-        y0 = i * BAND_HEIGHT
-        y1 = y0 + BAND_HEIGHT
-        draw.rectangle([0, y0, IMAGE_SIZE, y1], fill=color)
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        img.putpixel((0, i), (r, g, b))
     img.save(filepath, "PNG")
 
 
