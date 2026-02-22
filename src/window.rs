@@ -289,18 +289,29 @@ impl WallrusWindow {
         // Effects section — fullscreen effects applied to all shaders
         // =====================================================================
 
-        // --- Swirl slider ---
-        let swirl_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -10.0, 10.0, 0.1);
-        swirl_scale.set_value(0.0);
-        swirl_scale.set_hexpand(true);
-        swirl_scale.set_draw_value(true);
-        swirl_scale.set_value_pos(gtk4::PositionType::Right);
+        // --- Distortion type dropdown ---
+        let distort_list = gtk4::StringList::new(&["None", "Swirl", "Ripple"]);
+        let distort_dropdown = gtk4::DropDown::new(Some(distort_list), gtk4::Expression::NONE);
+        distort_dropdown.set_selected(0);
 
-        let swirl_row = adw::ActionRow::builder().title("Swirl").build();
-        swirl_row.add_suffix(&swirl_scale);
+        let distort_row = adw::ActionRow::builder().title("Distortion").build();
+        distort_row.add_suffix(&distort_dropdown);
+        distort_row.set_activatable_widget(Some(&distort_dropdown));
 
-        // Hint labels below the swirl slider
-        let swirl_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        // --- Distortion strength slider ---
+        let distort_strength_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -10.0, 10.0, 0.1);
+        distort_strength_scale.set_value(0.0);
+        distort_strength_scale.set_hexpand(true);
+        distort_strength_scale.set_draw_value(true);
+        distort_strength_scale.set_value_pos(gtk4::PositionType::Right);
+        distort_strength_scale.set_sensitive(false); // disabled when "None"
+
+        let distort_strength_row = adw::ActionRow::builder().title("Strength").build();
+        distort_strength_row.add_suffix(&distort_strength_scale);
+
+        // Hint labels below the strength slider (only for Swirl)
+        let distort_strength_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         let left_label = gtk4::Label::new(Some("left"));
         left_label.add_css_class("dim-label");
         left_label.add_css_class("caption");
@@ -310,16 +321,52 @@ impl WallrusWindow {
         right_label.add_css_class("dim-label");
         right_label.add_css_class("caption");
         right_label.set_halign(gtk4::Align::End);
-        swirl_hints.append(&left_label);
-        swirl_hints.append(&right_label);
-        swirl_hints.set_margin_start(12);
-        swirl_hints.set_margin_end(12);
-        swirl_hints.set_margin_bottom(4);
+        distort_strength_hints.append(&left_label);
+        distort_strength_hints.append(&right_label);
+        distort_strength_hints.set_margin_start(12);
+        distort_strength_hints.set_margin_end(12);
+        distort_strength_hints.set_margin_bottom(4);
 
-        let swirl_hint_row = gtk4::ListBoxRow::new();
-        swirl_hint_row.set_child(Some(&swirl_hints));
-        swirl_hint_row.set_activatable(false);
-        swirl_hint_row.set_selectable(false);
+        let distort_strength_hint_row = gtk4::ListBoxRow::new();
+        distort_strength_hint_row.set_child(Some(&distort_strength_hints));
+        distort_strength_hint_row.set_activatable(false);
+        distort_strength_hint_row.set_selectable(false);
+        distort_strength_hint_row.set_visible(false); // hidden when "None"
+
+        // --- Ripple frequency slider ---
+        let ripple_freq_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 1.0, 30.0, 0.5);
+        ripple_freq_scale.set_value(15.0);
+        ripple_freq_scale.set_hexpand(true);
+        ripple_freq_scale.set_draw_value(true);
+        ripple_freq_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let ripple_freq_row = adw::ActionRow::builder().title("Frequency").build();
+        ripple_freq_row.add_suffix(&ripple_freq_scale);
+        ripple_freq_row.set_visible(false); // hidden unless "Ripple"
+
+        // Hint labels below the frequency slider
+        let ripple_freq_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let sparse_label = gtk4::Label::new(Some("sparse"));
+        sparse_label.add_css_class("dim-label");
+        sparse_label.add_css_class("caption");
+        sparse_label.set_halign(gtk4::Align::Start);
+        sparse_label.set_hexpand(true);
+        let dense_label = gtk4::Label::new(Some("dense"));
+        dense_label.add_css_class("dim-label");
+        dense_label.add_css_class("caption");
+        dense_label.set_halign(gtk4::Align::End);
+        ripple_freq_hints.append(&sparse_label);
+        ripple_freq_hints.append(&dense_label);
+        ripple_freq_hints.set_margin_start(12);
+        ripple_freq_hints.set_margin_end(12);
+        ripple_freq_hints.set_margin_bottom(4);
+
+        let ripple_freq_hint_row = gtk4::ListBoxRow::new();
+        ripple_freq_hint_row.set_child(Some(&ripple_freq_hints));
+        ripple_freq_hint_row.set_activatable(false);
+        ripple_freq_hint_row.set_selectable(false);
+        ripple_freq_hint_row.set_visible(false); // hidden unless "Ripple"
 
         // --- Noise slider ---
         let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -1.0, 1.0, 0.01);
@@ -364,8 +411,11 @@ impl WallrusWindow {
 
         let effects_group = adw::PreferencesGroup::new();
         effects_group.set_title("Effects");
-        effects_group.add(&swirl_row);
-        effects_group.add(&swirl_hint_row);
+        effects_group.add(&distort_row);
+        effects_group.add(&distort_strength_row);
+        effects_group.add(&distort_strength_hint_row);
+        effects_group.add(&ripple_freq_row);
+        effects_group.add(&ripple_freq_hint_row);
         effects_group.add(&noise_row);
         effects_group.add(&noise_hint_row);
         effects_group.add(&dither_row);
@@ -641,12 +691,49 @@ impl WallrusWindow {
             });
         }
 
-        // --- Swirl change ---
+        // --- Distortion type change ---
         {
             let state = state.clone();
-            swirl_scale.connect_value_changed(move |scale| {
+            let distort_strength_scale = distort_strength_scale.clone();
+            let distort_strength_hint_row = distort_strength_hint_row.clone();
+            let ripple_freq_row = ripple_freq_row.clone();
+            let ripple_freq_hint_row = ripple_freq_hint_row.clone();
+            distort_dropdown.connect_selected_notify(move |dropdown| {
+                let idx = dropdown.selected();
+                let distort_type = idx as i32; // 0=None, 1=Swirl, 2=Ripple
                 if let Some(ref mut renderer) = *state.borrow_mut() {
-                    renderer.swirl = scale.value() as f32;
+                    renderer.distort_type = distort_type;
+                    if distort_type == 0 {
+                        renderer.distort_strength = 0.0;
+                    }
+                }
+                // Sensitivity & visibility
+                distort_strength_scale.set_sensitive(distort_type != 0);
+                if distort_type == 0 {
+                    distort_strength_scale.set_value(0.0);
+                }
+                distort_strength_hint_row.set_visible(distort_type == 1); // Swirl only
+                ripple_freq_row.set_visible(distort_type == 2); // Ripple only
+                ripple_freq_hint_row.set_visible(distort_type == 2);
+            });
+        }
+
+        // --- Distortion strength change ---
+        {
+            let state = state.clone();
+            distort_strength_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.distort_strength = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Ripple frequency change ---
+        {
+            let state = state.clone();
+            ripple_freq_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.ripple_freq = scale.value() as f32;
                 }
             });
         }

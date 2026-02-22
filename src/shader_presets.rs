@@ -120,17 +120,32 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
-uniform float uSwirl;
+uniform int uDistortType;
+uniform float uDistortStrength;
+uniform float uRippleFreq;
 uniform float uNoise;
 uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
     float r = length(c);
-    float angle = uSwirl * (1.0 - r);
+    float angle = uDistortStrength * (1.0 - r);
     float ca = cos(angle);
     float sa = sin(angle);
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
+
+vec2 rippleUV(vec2 uv) {
+    float amp = uDistortStrength * 0.005;
+    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
+    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
+    return uv;
+}
+
+vec2 distortUV(vec2 uv) {
+    if (uDistortType == 1) return swirlUV(uv);
+    if (uDistortType == 2) return rippleUV(uv);
+    return uv;
 }
 
 vec3 paletteColor(float t) {
@@ -171,7 +186,7 @@ vec3 applyDither(vec3 color, vec2 fragCoord) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    vec2 uv = distortUV(gl_FragCoord.xy / iResolution.xy);
     // Rotate the gradient direction
     vec2 dir = vec2(cos(uAngle), sin(uAngle));
     float t = dot(uv - 0.5, dir) + 0.5;
@@ -200,17 +215,32 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
-uniform float uSwirl;
+uniform int uDistortType;
+uniform float uDistortStrength;
+uniform float uRippleFreq;
 uniform float uNoise;
 uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
     float r = length(c);
-    float angle = uSwirl * (1.0 - r);
+    float angle = uDistortStrength * (1.0 - r);
     float ca = cos(angle);
     float sa = sin(angle);
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
+
+vec2 rippleUV(vec2 uv) {
+    float amp = uDistortStrength * 0.005;
+    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
+    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
+    return uv;
+}
+
+vec2 distortUV(vec2 uv) {
+    if (uDistortType == 1) return swirlUV(uv);
+    if (uDistortType == 2) return rippleUV(uv);
+    return uv;
 }
 
 vec3 paletteColor(float t) {
@@ -251,7 +281,7 @@ vec3 applyDither(vec3 color, vec2 fragCoord) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    vec2 uv = distortUV(gl_FragCoord.xy / iResolution.xy);
     float time = uSpeed;
 
     float v = 0.0;
@@ -293,17 +323,32 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
-uniform float uSwirl;
+uniform int uDistortType;
+uniform float uDistortStrength;
+uniform float uRippleFreq;
 uniform float uNoise;
 uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
     float r = length(c);
-    float angle = uSwirl * (1.0 - r);
+    float angle = uDistortStrength * (1.0 - r);
     float ca = cos(angle);
     float sa = sin(angle);
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
+
+vec2 rippleUV(vec2 uv) {
+    float amp = uDistortStrength * 0.005;
+    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
+    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
+    return uv;
+}
+
+vec2 distortUV(vec2 uv) {
+    if (uDistortType == 1) return swirlUV(uv);
+    if (uDistortType == 2) return rippleUV(uv);
+    return uv;
 }
 
 vec3 paletteColor(float t) {
@@ -344,7 +389,7 @@ vec3 applyDither(vec3 color, vec2 fragCoord) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    vec2 uv = distortUV(gl_FragCoord.xy / iResolution.xy);
     float time = uSpeed;
 
     // Rotate UV
@@ -390,17 +435,32 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
-uniform float uSwirl;
+uniform int uDistortType;
+uniform float uDistortStrength;
+uniform float uRippleFreq;
 uniform float uNoise;
 uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
     float r = length(c);
-    float angle = uSwirl * (1.0 - r);
+    float angle = uDistortStrength * (1.0 - r);
     float ca = cos(angle);
     float sa = sin(angle);
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
+
+vec2 rippleUV(vec2 uv) {
+    float amp = uDistortStrength * 0.005;
+    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
+    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
+    return uv;
+}
+
+vec2 distortUV(vec2 uv) {
+    if (uDistortType == 1) return swirlUV(uv);
+    if (uDistortType == 2) return rippleUV(uv);
+    return uv;
 }
 
 vec3 paletteColor(float t) {
@@ -468,7 +528,7 @@ float fbm(vec2 p) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    vec2 uv = distortUV(gl_FragCoord.xy / iResolution.xy);
 
     // Scale and offset the terrain
     vec2 p = (uv - 0.5) * uScale * 2.0;
@@ -508,17 +568,32 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 uniform float uBlend;
-uniform float uSwirl;
+uniform int uDistortType;
+uniform float uDistortStrength;
+uniform float uRippleFreq;
 uniform float uNoise;
 uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
     float r = length(c);
-    float angle = uSwirl * (1.0 - r);
+    float angle = uDistortStrength * (1.0 - r);
     float ca = cos(angle);
     float sa = sin(angle);
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
+}
+
+vec2 rippleUV(vec2 uv) {
+    float amp = uDistortStrength * 0.005;
+    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
+    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
+    return uv;
+}
+
+vec2 distortUV(vec2 uv) {
+    if (uDistortType == 1) return swirlUV(uv);
+    if (uDistortType == 2) return rippleUV(uv);
+    return uv;
 }
 
 vec3 paletteColor(float t) {
@@ -559,7 +634,7 @@ vec3 applyDither(vec3 color, vec2 fragCoord) {
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = swirlUV(gl_FragCoord.xy / iResolution.xy);
+    vec2 uv = distortUV(gl_FragCoord.xy / iResolution.xy);
 
     // Offset center horizontally based on uCenter
     vec2 center = vec2(0.5 + uCenter * 0.4, 0.5);

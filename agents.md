@@ -13,7 +13,11 @@ Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) th
 - **All shaders use exactly 4 colors** from palette images (no `uColorCount` — always 4 colors)
 - **All shaders have a Blend parameter** (`uBlend` uniform, range 0.0–1.0, default 0.5) that controls transition sharpness between color bands. At 0 = hard flag-like stripes with pixel-sharp edges. At 1 = fully smooth blending. Uses `smoothstep` with variable-width transition zones at boundaries 0.25, 0.5, 0.75. Blend slider has "hard" / "smooth" hint labels below it.
 - **Effects section** — A separate `adw::PreferencesGroup` titled "Effects" in the **right column** (below Preview, above Export). Contains:
-  - **Swirl** (`uSwirl` uniform, range -10.0 to +10.0, default 0.0) — vortex distortion applied to UV coordinates. Has "left" / "right" hint labels.
+  - **Distortion** — dropdown with "None", "Swirl", "Ripple" options. Controls `uDistortType` uniform (int: 0=none, 1=swirl, 2=ripple).
+    - **Strength** slider (`uDistortStrength` uniform, range -10.0 to +10.0, default 0.0). Insensitive (grayed out) when "None" selected.
+    - Swirl: single vortex UV distortion around center. Hint labels "left"/"right" shown only for Swirl.
+    - Ripple: sine-based wave displacement across entire image. Has additional **Frequency** slider (`uRippleFreq` uniform, range 1.0 to 30.0, default 15.0) with "sparse"/"dense" hints. Frequency slider/hints only visible when "Ripple" selected.
+    - All shaders call `distortUV(uv)` which dispatches to `swirlUV()`, `rippleUV()`, or passthrough based on `uDistortType`.
   - **Noise** (`uNoise` uniform, range -1.0 to +1.0, default 0.0) — film grain effect. Negative = darker grain, positive = lighter grain. Has "darker" / "lighter" hint labels.
   - **Dither** (`uDither` uniform, 0.0 or 1.0) — ordered Bayer 4x4 dithering, quantizes to 4 levels per channel for a retro pixel art look. Controlled by a `gtk4::Switch` toggle (on/off).
 - **Hint labels pattern:** Small dim gray text below sliders using a `gtk4::Box` with two `gtk4::Label`s (css classes `dim-label` + `caption`), wrapped in a non-activatable/non-selectable `gtk4::ListBoxRow`, added to the PreferencesGroup after the slider row.
@@ -43,7 +47,9 @@ Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) th
 - **Adwaita warning** `"Using GtkSettings:gtk-application-prefer-dark-theme with libadwaita is unsupported"` appears on stderr — this is from the system settings, not our code. Harmless, ignore it.
 - **ToastOverlay** must be created at window construction time wrapping the ToolbarView, not dynamically on first toast.
 - **Blend/sharpness control:** The original "steepness" approach using `pow(t, steepness)` did NOT work. The correct approach uses 4 equal color bands with boundaries at 0.25, 0.5, 0.75, and `smoothstep` with variable-width fade zones controlled by `uBlend`.
-- **Swirl UV distortion:** `vec2 swirlUV(vec2 uv)` rotates UV around center by `uSwirl * (1.0 - distance)`. Applied at the start of every shader's `main()`.
+- **Swirl UV distortion:** `vec2 swirlUV(vec2 uv)` rotates UV around center by `uDistortStrength * (1.0 - distance)`. Part of the `distortUV()` dispatch system.
+- **Ripple UV distortion:** `vec2 rippleUV(vec2 uv)` applies sine-based wave displacement: `uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp` (and vice versa), where `amp = uDistortStrength * 0.005`.
+- **Distortion dispatch:** `vec2 distortUV(vec2 uv)` checks `uDistortType` (int): 0=passthrough, 1=swirlUV, 2=rippleUV. Called at start of every shader's `main()`.
 - **Terrain shader smoothness:** Value noise was too chaotic. Gradient noise with quintic interpolation (`6t^5 - 15t^4 + 10t^3`) + single octave + double smoothstep post-processing produces smooth rounded contour hills. The `hash2()` function returns 2D gradient vectors for the gradient noise.
 - **Gradient noise range:** `gnoise()` returns values that cluster around 0.3–0.7 (not full 0–1), so terrain height needs remapping: `clamp((height - 0.15) * 1.4, 0.0, 1.0)` followed by double smoothstep.
 - **Noise grain direction:** `hash()` returns 0–1, multiplied by `uNoise` directly (not centered at 0). Positive uNoise adds brightness, negative subtracts. This gives directional grain control with the -1 to +1 slider.
@@ -56,9 +62,9 @@ Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) th
 - `/home/sbeam/code/wallpaper/src/main.rs` — Entry point (has `mod palette`). 17 lines.
 - `/home/sbeam/code/wallpaper/src/application.rs` — AdwApplication setup. 31 lines.
 - `/home/sbeam/code/wallpaper/src/palette.rs` — Category-aware palette image extraction + directory listing. Scans bundled `data/palettes/` and user `~/.local/share/wallrus/palettes/`. 178 lines.
-- `/home/sbeam/code/wallpaper/src/gl_renderer.rs` — GL context, RendererState (all uniform fields: color1-4, angle, scale, speed, blend, swirl, noise, center, dither), fullscreen quad, render-to-pixels. Contains `gl_loader` module for EGL/GLX dynamic loading. 370 lines.
-- `/home/sbeam/code/wallpaper/src/shader_presets.rs` — 5 shader presets (Bars, Circle, Plasma, Waves, Terrain) with embedded GLSL fragment sources. Each shader includes shared functions (swirlUV, paletteColor, hash, bayer4x4, applyDither) via `concat!`. PresetControls struct with `has_angle`, `has_scale`, `has_speed`, `has_center`, `speed_label`, `speed_range`, `scale_range`. 583 lines.
-- `/home/sbeam/code/wallpaper/src/window.rs` — Two-column layout: left (palette + pattern controls with blend/center hints), right (preview + effects with swirl/noise/dither + export). All UI construction and signal wiring. 841 lines.
+- `/home/sbeam/code/wallpaper/src/gl_renderer.rs` — GL context, RendererState (all uniform fields: color1-4, angle, scale, speed, blend, distort_type, distort_strength, ripple_freq, noise, center, dither), fullscreen quad, render-to-pixels. Contains `gl_loader` module for EGL/GLX dynamic loading.
+- `/home/sbeam/code/wallpaper/src/shader_presets.rs` — 5 shader presets (Bars, Circle, Plasma, Waves, Terrain) with embedded GLSL fragment sources. Each shader includes shared functions (swirlUV, rippleUV, distortUV, paletteColor, hash, bayer4x4, applyDither) via `concat!`. PresetControls struct with `has_angle`, `has_scale`, `has_speed`, `has_center`, `speed_label`, `speed_range`, `scale_range`.
+- `/home/sbeam/code/wallpaper/src/window.rs` — Two-column layout: left (palette + pattern controls with blend/center hints), right (preview + effects with distortion dropdown/strength/frequency + noise/dither + export). All UI construction and signal wiring.
 - `/home/sbeam/code/wallpaper/src/shader.rs` — ShaderProgram compilation and linking. 65 lines.
 - `/home/sbeam/code/wallpaper/src/export.rs` — Image export (PNG/JPEG at 1080p/1440p/4K). Auto-detects best default resolution from display. 119 lines.
 - `/home/sbeam/code/wallpaper/src/wallpaper.rs` — GNOME wallpaper setting via gsettings (light + dark URIs). 34 lines.
@@ -93,7 +99,9 @@ All shader uniforms are stored as fields on `RendererState` in `gl_renderer.rs`.
 | `uScale` | float | per-preset | 1.0 | Circle, Plasma, Waves, Terrain |
 | `uSpeed` | float | 0–20 | 0.0 | Plasma, Waves, Terrain |
 | `uBlend` | float | 0–1 | 0.5 | all |
-| `uSwirl` | float | -10–10 | 0.0 | all |
+| `uDistortType` | int | 0–2 | 0 | all (0=none, 1=swirl, 2=ripple) |
+| `uDistortStrength` | float | -10–10 | 0.0 | all |
+| `uRippleFreq` | float | 1–30 | 15.0 | all (only used when ripple) |
 | `uNoise` | float | -1–1 | 0.0 | all |
 | `uCenter` | float | -1–1 | 0.0 | Circle |
 | `uDither` | float | 0 or 1 | 0.0 | all |
@@ -102,7 +110,9 @@ All shader uniforms are stored as fields on `RendererState` in `gl_renderer.rs`.
 
 ### Shared GLSL functions (in every fragment shader)
 
-- `swirlUV(vec2 uv)` — vortex UV distortion
+- `swirlUV(vec2 uv)` — vortex UV distortion (used by distortUV)
+- `rippleUV(vec2 uv)` — sine-wave UV displacement (used by distortUV)
+- `distortUV(vec2 uv)` — dispatches to swirlUV/rippleUV/passthrough based on uDistortType
 - `paletteColor(float t)` — 4-band color lookup with blend control
 - `hash(vec2 p)` — pseudo-random hash for noise grain
 - `bayer4x4(vec2 p)` — 4x4 ordered dithering threshold
