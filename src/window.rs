@@ -621,7 +621,13 @@ impl WallrusWindow {
         let export_jpg_button = gtk4::Button::with_label("Export JPEG");
         export_jpg_button.set_tooltip_text(Some("Export as JPEG (Ctrl+Shift+E)"));
 
-        let set_wallpaper_button = gtk4::Button::with_label("Set as Wallpaper");
+        let set_wallpaper_menu = gio::Menu::new();
+        set_wallpaper_menu.append(Some("Light Mode Only"), Some("win.set-wallpaper-light"));
+        set_wallpaper_menu.append(Some("Dark Mode Only"), Some("win.set-wallpaper-dark"));
+
+        let set_wallpaper_button = adw::SplitButton::new();
+        set_wallpaper_button.set_label("Set as Wallpaper");
+        set_wallpaper_button.set_menu_model(Some(&set_wallpaper_menu));
         set_wallpaper_button.add_css_class("suggested-action");
         set_wallpaper_button.set_tooltip_text(Some("Set as desktop wallpaper (Ctrl+Shift+W)"));
 
@@ -1134,56 +1140,94 @@ impl WallrusWindow {
         export_jpg_button.connect_clicked(make_export_handler(ExportFormat::Jpeg));
 
         // --- Set as wallpaper handler ---
-        {
+        // Shared logic for all wallpaper modes (Both / LightOnly / DarkOnly).
+        let make_wallpaper_handler = {
             let state = state.clone();
             let resolution_row = resolution_row.clone();
             let gl_area = gl_area.clone();
             let window_ref = window.clone();
-            set_wallpaper_button.connect_clicked(move |_| {
-                let resolution =
-                    ExportResolution::from_index(resolution_row.selected(), display_dims);
-                let (w, h) = resolution.dimensions();
+            move |mode: wallpaper::WallpaperMode| {
+                let state = state.clone();
+                let resolution_row = resolution_row.clone();
+                let gl_area = gl_area.clone();
+                let window_ref = window_ref.clone();
+                move || {
+                    let resolution =
+                        ExportResolution::from_index(resolution_row.selected(), display_dims);
+                    let (w, h) = resolution.dimensions();
 
-                gl_area.make_current();
+                    gl_area.make_current();
 
-                let pixels = {
-                    let state_ref = state.borrow();
-                    match state_ref.as_ref() {
-                        Some(renderer) => renderer.render_to_pixels(w as i32, h as i32),
+                    let pixels = {
+                        let state_ref = state.borrow();
+                        match state_ref.as_ref() {
+                            Some(renderer) => renderer.render_to_pixels(w as i32, h as i32),
+                            None => {
+                                show_toast(&window_ref, "Renderer not initialized");
+                                return;
+                            }
+                        }
+                    };
+
+                    let bg_dir = match dirs::data_dir()
+                        .or_else(|| dirs::home_dir().map(|h| h.join(".local/share")))
+                    {
+                        Some(dir) => dir.join("backgrounds"),
                         None => {
-                            show_toast(&window_ref, "Renderer not initialized");
+                            show_toast(&window_ref, "Could not determine data directory");
+                            return;
+                        }
+                    };
+
+                    if let Err(e) = std::fs::create_dir_all(&bg_dir) {
+                        show_toast(&window_ref, &format!("Failed to create directory: {}", e));
+                        return;
+                    }
+
+                    let path_light = bg_dir.join("wallrus_light.png");
+                    let path_dark = bg_dir.join("wallrus_dark.png");
+
+                    // Save the rendered image to the appropriate file(s)
+                    let save_path = match mode {
+                        wallpaper::WallpaperMode::DarkOnly => &path_dark,
+                        _ => &path_light,
+                    };
+
+                    if let Err(e) = export::save_pixels(&pixels, w, h, save_path, ExportFormat::Png)
+                    {
+                        show_toast(&window_ref, &format!("Failed to save: {}", e));
+                        return;
+                    }
+
+                    // For Both mode, copy light to dark so GNOME sees distinct files
+                    if matches!(mode, wallpaper::WallpaperMode::Both) {
+                        if let Err(e) = std::fs::copy(&path_light, &path_dark) {
+                            show_toast(
+                                &window_ref,
+                                &format!("Failed to copy dark wallpaper: {}", e),
+                            );
                             return;
                         }
                     }
-                };
 
-                let bg_dir = match dirs::data_dir()
-                    .or_else(|| dirs::home_dir().map(|h| h.join(".local/share")))
-                {
-                    Some(dir) => dir.join("backgrounds"),
-                    None => {
-                        show_toast(&window_ref, "Could not determine data directory");
-                        return;
-                    }
-                };
+                    let msg = match mode {
+                        wallpaper::WallpaperMode::Both => "Wallpaper set!",
+                        wallpaper::WallpaperMode::LightOnly => "Light mode wallpaper set!",
+                        wallpaper::WallpaperMode::DarkOnly => "Dark mode wallpaper set!",
+                    };
 
-                if let Err(e) = std::fs::create_dir_all(&bg_dir) {
-                    show_toast(&window_ref, &format!("Failed to create directory: {}", e));
-                    return;
-                }
-
-                let path = bg_dir.join("wallrus_current.png");
-
-                match export::save_pixels(&pixels, w, h, &path, ExportFormat::Png) {
-                    Ok(()) => match wallpaper::set_gnome_wallpaper(&path) {
-                        Ok(()) => show_toast(&window_ref, "Wallpaper set!"),
+                    match wallpaper::set_gnome_wallpaper(&path_light, &path_dark, mode) {
+                        Ok(()) => show_toast(&window_ref, msg),
                         Err(e) => show_toast(&window_ref, &format!("Failed: {}", e)),
-                    },
-                    Err(e) => {
-                        show_toast(&window_ref, &format!("Failed to save: {}", e));
                     }
                 }
-            });
+            }
+        };
+
+        // Main split button click → set both modes
+        {
+            let handler = make_wallpaper_handler(wallpaper::WallpaperMode::Both);
+            set_wallpaper_button.connect_clicked(move |_| handler());
         }
 
         // =====================================================================
@@ -1210,6 +1254,20 @@ impl WallrusWindow {
             action_set_wallpaper.connect_activate(move |_, _| btn.emit_clicked());
         }
         window.add_action(&action_set_wallpaper);
+
+        let action_set_wallpaper_light = gio::SimpleAction::new("set-wallpaper-light", None);
+        {
+            let handler = make_wallpaper_handler(wallpaper::WallpaperMode::LightOnly);
+            action_set_wallpaper_light.connect_activate(move |_, _| handler());
+        }
+        window.add_action(&action_set_wallpaper_light);
+
+        let action_set_wallpaper_dark = gio::SimpleAction::new("set-wallpaper-dark", None);
+        {
+            let handler = make_wallpaper_handler(wallpaper::WallpaperMode::DarkOnly);
+            action_set_wallpaper_dark.connect_activate(move |_, _| handler());
+        }
+        window.add_action(&action_set_wallpaper_dark);
 
         app.set_accels_for_action("win.export-png", &["<Control>e"]);
         app.set_accels_for_action("win.export-jpeg", &["<Control><Shift>e"]);
