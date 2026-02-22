@@ -250,6 +250,12 @@ impl WallrusWindow {
 
         let center_row = adw::ActionRow::builder().title("Center").build();
         center_row.add_suffix(&center_scale);
+        let center_reset = gtk4::Button::from_icon_name("edit-clear-symbolic");
+        center_reset.add_css_class("flat");
+        center_reset.add_css_class("circular");
+        center_reset.set_valign(gtk4::Align::Center);
+        center_reset.set_tooltip_text(Some("Reset to 0"));
+        center_row.add_suffix(&center_reset);
 
         // Hint labels below the center slider
         let center_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -307,6 +313,12 @@ impl WallrusWindow {
         distort_strength_scale.set_value_pos(gtk4::PositionType::Right);
         let distort_strength_row = adw::ActionRow::builder().title("Strength").build();
         distort_strength_row.add_suffix(&distort_strength_scale);
+        let distort_strength_reset = gtk4::Button::from_icon_name("edit-clear-symbolic");
+        distort_strength_reset.add_css_class("flat");
+        distort_strength_reset.add_css_class("circular");
+        distort_strength_reset.set_valign(gtk4::Align::Center);
+        distort_strength_reset.set_tooltip_text(Some("Reset to 0"));
+        distort_strength_row.add_suffix(&distort_strength_reset);
         distort_strength_row.set_visible(false); // hidden when "None"
 
         // Hint labels below the strength slider (only for Swirl)
@@ -376,6 +388,12 @@ impl WallrusWindow {
 
         let noise_row = adw::ActionRow::builder().title("Noise").build();
         noise_row.add_suffix(&noise_scale);
+        let noise_reset = gtk4::Button::from_icon_name("edit-clear-symbolic");
+        noise_reset.add_css_class("flat");
+        noise_reset.add_css_class("circular");
+        noise_reset.set_valign(gtk4::Align::Center);
+        noise_reset.set_tooltip_text(Some("Reset to 0"));
+        noise_row.add_suffix(&noise_reset);
 
         // Hint labels below the noise slider
         let noise_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -795,6 +813,14 @@ impl WallrusWindow {
             });
         }
 
+        // --- Center reset ---
+        {
+            let center_scale = center_scale.clone();
+            center_reset.connect_clicked(move |_| {
+                center_scale.set_value(0.0);
+            });
+        }
+
         // --- Distortion type change ---
         {
             let state = state.clone();
@@ -833,6 +859,14 @@ impl WallrusWindow {
             });
         }
 
+        // --- Distortion strength reset ---
+        {
+            let distort_strength_scale = distort_strength_scale.clone();
+            distort_strength_reset.connect_clicked(move |_| {
+                distort_strength_scale.set_value(0.0);
+            });
+        }
+
         // --- Ripple frequency change ---
         {
             let state = state.clone();
@@ -850,6 +884,14 @@ impl WallrusWindow {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.noise = scale.value() as f32;
                 }
+            });
+        }
+
+        // --- Noise reset ---
+        {
+            let noise_scale = noise_scale.clone();
+            noise_reset.connect_clicked(move |_| {
+                noise_scale.set_value(0.0);
             });
         }
 
