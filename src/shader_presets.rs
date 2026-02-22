@@ -122,6 +122,7 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform float uSwirl;
 uniform float uNoise;
+uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
@@ -150,6 +151,21 @@ float hash(vec2 p) {
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
+
+float bayer4x4(vec2 p) {
+    ivec2 i = ivec2(p) & 3;
+    int idx = i.x + i.y * 4;
+    int b[16] = int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+    return float(b[idx]) / 16.0;
+}
+
+vec3 applyDither(vec3 color, vec2 fragCoord) {
+    if (uDither < 0.5) return color;
+    float levels = 4.0;
+    float threshold = bayer4x4(fragCoord) - 0.5;
+    float step_ = 1.0 / levels;
+    return floor(color / step_ + threshold + 0.5) * step_;
+}
 "#,
     r#"
 out vec4 fragColor;
@@ -165,6 +181,7 @@ void main() {
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
     color = clamp(color, 0.0, 1.0);
+    color = applyDither(color, gl_FragCoord.xy);
     fragColor = vec4(color, 1.0);
 }
 "#
@@ -185,6 +202,7 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform float uSwirl;
 uniform float uNoise;
+uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
@@ -212,6 +230,21 @@ float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
+}
+
+float bayer4x4(vec2 p) {
+    ivec2 i = ivec2(p) & 3;
+    int idx = i.x + i.y * 4;
+    int b[16] = int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+    return float(b[idx]) / 16.0;
+}
+
+vec3 applyDither(vec3 color, vec2 fragCoord) {
+    if (uDither < 0.5) return color;
+    float levels = 4.0;
+    float threshold = bayer4x4(fragCoord) - 0.5;
+    float step_ = 1.0 / levels;
+    return floor(color / step_ + threshold + 0.5) * step_;
 }
 "#,
     r#"
@@ -240,6 +273,7 @@ void main() {
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
     color = clamp(color, 0.0, 1.0);
+    color = applyDither(color, gl_FragCoord.xy);
     fragColor = vec4(color, 1.0);
 }
 "#
@@ -261,6 +295,7 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform float uSwirl;
 uniform float uNoise;
+uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
@@ -288,6 +323,21 @@ float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
+}
+
+float bayer4x4(vec2 p) {
+    ivec2 i = ivec2(p) & 3;
+    int idx = i.x + i.y * 4;
+    int b[16] = int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+    return float(b[idx]) / 16.0;
+}
+
+vec3 applyDither(vec3 color, vec2 fragCoord) {
+    if (uDither < 0.5) return color;
+    float levels = 4.0;
+    float threshold = bayer4x4(fragCoord) - 0.5;
+    float step_ = 1.0 / levels;
+    return floor(color / step_ + threshold + 0.5) * step_;
 }
 "#,
     r#"
@@ -321,6 +371,7 @@ void main() {
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
     color = clamp(color, 0.0, 1.0);
+    color = applyDither(color, gl_FragCoord.xy);
     fragColor = vec4(color, 1.0);
 }
 "#
@@ -341,6 +392,7 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform float uSwirl;
 uniform float uNoise;
+uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
@@ -368,6 +420,21 @@ float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
+}
+
+float bayer4x4(vec2 p) {
+    ivec2 i = ivec2(p) & 3;
+    int idx = i.x + i.y * 4;
+    int b[16] = int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+    return float(b[idx]) / 16.0;
+}
+
+vec3 applyDither(vec3 color, vec2 fragCoord) {
+    if (uDither < 0.5) return color;
+    float levels = 4.0;
+    float threshold = bayer4x4(fragCoord) - 0.5;
+    float step_ = 1.0 / levels;
+    return floor(color / step_ + threshold + 0.5) * step_;
 }
 
 // Hash that returns a 2D gradient direction
@@ -422,6 +489,7 @@ void main() {
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
     color = clamp(color, 0.0, 1.0);
+    color = applyDither(color, gl_FragCoord.xy);
     fragColor = vec4(color, 1.0);
 }
 "#
@@ -442,6 +510,7 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform float uSwirl;
 uniform float uNoise;
+uniform float uDither;
 
 vec2 swirlUV(vec2 uv) {
     vec2 c = uv - 0.5;
@@ -470,6 +539,21 @@ float hash(vec2 p) {
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
+
+float bayer4x4(vec2 p) {
+    ivec2 i = ivec2(p) & 3;
+    int idx = i.x + i.y * 4;
+    int b[16] = int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+    return float(b[idx]) / 16.0;
+}
+
+vec3 applyDither(vec3 color, vec2 fragCoord) {
+    if (uDither < 0.5) return color;
+    float levels = 4.0;
+    float threshold = bayer4x4(fragCoord) - 0.5;
+    float step_ = 1.0 / levels;
+    return floor(color / step_ + threshold + 0.5) * step_;
+}
 "#,
     r#"
 out vec4 fragColor;
@@ -492,6 +576,7 @@ void main() {
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
     color = clamp(color, 0.0, 1.0);
+    color = applyDither(color, gl_FragCoord.xy);
     fragColor = vec4(color, 1.0);
 }
 "#

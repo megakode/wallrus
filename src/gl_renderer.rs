@@ -79,6 +79,7 @@ pub struct RendererState {
     pub swirl: f32,
     pub noise: f32,
     pub center: f32,
+    pub dither: f32,
     // Current preset name
     pub current_preset: String,
 }
@@ -124,6 +125,7 @@ impl RendererState {
             swirl: 0.0,
             noise: 0.0,
             center: 0.0,
+            dither: 0.0,
             current_preset: String::from("Bars"),
         }
     }
@@ -200,6 +202,9 @@ impl RendererState {
                 }
                 if let Some(loc) = gl.get_uniform_location(program.id, "uCenter") {
                     gl.uniform_1_f32(Some(&loc), self.center);
+                }
+                if let Some(loc) = gl.get_uniform_location(program.id, "uDither") {
+                    gl.uniform_1_f32(Some(&loc), self.dither);
                 }
 
                 gl.bind_vertex_array(Some(self.vao));

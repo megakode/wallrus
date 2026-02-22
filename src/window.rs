@@ -353,12 +353,22 @@ impl WallrusWindow {
         noise_hint_row.set_activatable(false);
         noise_hint_row.set_selectable(false);
 
+        // --- Dither toggle ---
+        let dither_switch = gtk4::Switch::new();
+        dither_switch.set_active(false);
+        dither_switch.set_valign(gtk4::Align::Center);
+
+        let dither_row = adw::ActionRow::builder().title("Dither").build();
+        dither_row.add_suffix(&dither_switch);
+        dither_row.set_activatable_widget(Some(&dither_switch));
+
         let effects_group = adw::PreferencesGroup::new();
         effects_group.set_title("Effects");
         effects_group.add(&swirl_row);
         effects_group.add(&swirl_hint_row);
         effects_group.add(&noise_row);
         effects_group.add(&noise_hint_row);
+        effects_group.add(&dither_row);
 
         // =====================================================================
         // Export section
@@ -647,6 +657,16 @@ impl WallrusWindow {
             noise_scale.connect_value_changed(move |scale| {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.noise = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Dither change ---
+        {
+            let state = state.clone();
+            dither_switch.connect_active_notify(move |switch| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.dither = if switch.is_active() { 1.0 } else { 0.0 };
                 }
             });
         }
