@@ -618,6 +618,7 @@ impl WallrusWindow {
         left_box.set_margin_bottom(12);
         left_box.append(&palette_group);
         left_box.append(&controls_group);
+        left_box.append(&distortion_group);
 
         let left_scroll = gtk4::ScrolledWindow::new();
         left_scroll.set_child(Some(&left_box));
@@ -634,7 +635,6 @@ impl WallrusWindow {
         right_box.set_margin_bottom(12);
         right_box.set_hexpand(true);
         right_box.append(&preview_group);
-        right_box.append(&distortion_group);
         right_box.append(&effects_group);
         right_box.append(&lighting_group);
         right_box.append(&export_group);
