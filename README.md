@@ -1,9 +1,10 @@
-<p align="center">
-  <img src="data/icons/com.megakode.Wallrus.svg" width="128" height="128" alt="Wallrus icon">
-</p>
+
 
 # Wallrus
 
+<p align="center">
+  <img src="data/icons/com.megakode.Wallrus.svg" width="128" height="128" alt="Wallrus icon">
+</p>
 A user-friendly GNOME (GTK4) application for generating colorful abstract wallpapers based on different patterns and effects.
 
 For those who prefer minimalist, colorful wallpapers and like changing colors once in a while to keep things fresh.
