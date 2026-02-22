@@ -30,13 +30,12 @@ For those who prefer minimalist, colorful wallpapers and like changing colors on
 - **Hundreds of bundled palette images** across several categories (cold, dark, fall,
   gradient, light, pastel, retro, sunset, warm, winter, etc.)
 - **Blend control** — go from hard flag-like stripes to fully smooth gradients
-- **Effects** — swirl distortion, film grain noise, and ordered Bayer dithering
-  for a retro look
+- **Effects** - Distortion, lightning and noise
 - **Export** — PNG or JPEG at 1080p, 1440p, or 4K (default auto-detected from
   your display)
 - **Set as wallpaper** — writes to `~/.local/share/backgrounds/` and applies
   via `gsettings` for both light and dark mode
-- **Custom palettes** — drop 400×400 px palette images into
+- **Custom palettes** — drop 1×4 px palette images into
   `~/.local/share/wallrus/palettes/<category>/` and they appear automatically
 - **Keyboard shortcuts** — Ctrl+E (export PNG), Ctrl+Shift+E (export JPEG),
   Ctrl+Shift+W (set as wallpaper)
