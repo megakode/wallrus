@@ -25,6 +25,14 @@ impl WallrusWindow {
         let header = adw::HeaderBar::new();
         header.set_title_widget(Some(&gtk4::Label::new(Some("Wallrus"))));
 
+        // Hamburger menu with About item
+        let menu = gio::Menu::new();
+        menu.append(Some("About Wallrus"), Some("win.show-about"));
+        let menu_button = gtk4::MenuButton::new();
+        menu_button.set_icon_name("open-menu-symbolic");
+        menu_button.set_menu_model(Some(&menu));
+        header.pack_end(&menu_button);
+
         // --- GL preview area ---
         let gl_area = gl_renderer::create_gl_area(state.clone());
         gl_area.set_size_request(320, 180);
@@ -1206,6 +1214,29 @@ impl WallrusWindow {
         app.set_accels_for_action("win.export-png", &["<Control>e"]);
         app.set_accels_for_action("win.export-jpeg", &["<Control><Shift>e"]);
         app.set_accels_for_action("win.set-wallpaper", &["<Control><Shift>w"]);
+
+        // --- About dialog action ---
+        let action_about = gio::SimpleAction::new("show-about", None);
+        {
+            let window_ref = window.clone();
+            action_about.connect_activate(move |_, _| {
+                let about = adw::AboutWindow::builder()
+                    .application_name("Wallrus")
+                    .application_icon("com.megakode.Wallrus")
+                    .developer_name("Peter Boné")
+                    .version("0.1.0")
+                    .website("https://github.com/megakode/wallrus")
+                    .issue_url("https://github.com/megakode/wallrus/issues")
+                    .license_type(gtk4::License::Gpl30)
+                    .copyright("© 2026 Peter Boné")
+                    .developers(vec!["Peter Boné"])
+                    .transient_for(&window_ref)
+                    .modal(true)
+                    .build();
+                about.present();
+            });
+        }
+        window.add_action(&action_about);
 
         window
     }
