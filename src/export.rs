@@ -34,6 +34,29 @@ impl ExportResolution {
             _ => ExportResolution::Hd,
         }
     }
+
+    /// Returns the index of the resolution preset closest to the given
+    /// display dimensions (by total pixel count).
+    pub fn best_index_for_display(width: i32, height: i32) -> u32 {
+        let display_pixels = (width as u64) * (height as u64);
+        let resolutions = [
+            ExportResolution::Hd,
+            ExportResolution::Qhd,
+            ExportResolution::Uhd4k,
+        ];
+        let mut best_idx = 0u32;
+        let mut best_diff = u64::MAX;
+        for (i, res) in resolutions.iter().enumerate() {
+            let (w, h) = res.dimensions();
+            let pixels = (w as u64) * (h as u64);
+            let diff = display_pixels.abs_diff(pixels);
+            if diff < best_diff {
+                best_diff = diff;
+                best_idx = i as u32;
+            }
+        }
+        best_idx
+    }
 }
 
 /// Export format

@@ -46,7 +46,7 @@ impl WallrusWindow {
         let preset_dropdown = gtk4::DropDown::new(Some(preset_list), gtk4::Expression::NONE);
         preset_dropdown.set_selected(0);
 
-        let preset_row = adw::ActionRow::builder().title("Shader").build();
+        let preset_row = adw::ActionRow::builder().title("Type").build();
         preset_row.add_suffix(&preset_dropdown);
         preset_row.set_activatable_widget(Some(&preset_dropdown));
 
@@ -371,7 +371,29 @@ impl WallrusWindow {
         ]);
         let resolution_dropdown =
             gtk4::DropDown::new(Some(resolution_list), gtk4::Expression::NONE);
-        resolution_dropdown.set_selected(0);
+
+        // Default to the resolution closest to the current display
+        let default_res_idx = gdk::Display::default()
+            .and_then(|display| {
+                let monitors = display.monitors();
+                // Find the largest monitor by pixel count
+                let mut best: Option<(i32, i32)> = None;
+                for i in 0..monitors.n_items() {
+                    if let Some(obj) = monitors.item(i) {
+                        if let Some(mon) = obj.downcast_ref::<gdk::Monitor>() {
+                            let geom = mon.geometry();
+                            let pixels = geom.width() * geom.height();
+                            if best.map_or(true, |(bw, bh)| pixels > bw * bh) {
+                                best = Some((geom.width(), geom.height()));
+                            }
+                        }
+                    }
+                }
+                best
+            })
+            .map(|(w, h)| ExportResolution::best_index_for_display(w, h))
+            .unwrap_or(0);
+        resolution_dropdown.set_selected(default_res_idx);
 
         let resolution_row = adw::ActionRow::builder().title("Resolution").build();
         resolution_row.add_suffix(&resolution_dropdown);
