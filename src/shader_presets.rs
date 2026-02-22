@@ -123,6 +123,10 @@ uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
 uniform float uRippleFreq;
+uniform int uLightingType;
+uniform float uLightStrength;
+uniform float uBevelWidth;
+uniform float uLightAngle;
 uniform float uNoise;
 uniform float uDither;
 
@@ -159,6 +163,31 @@ vec3 paletteColor(float t) {
     color = mix(color, uColor3, f2);
     color = mix(color, uColor4, f3);
     return color;
+}
+
+vec3 applyLighting(vec3 color, float t, vec2 uv) {
+    if (uLightingType == 0) return color;
+    float shade = 0.0;
+    if (uLightingType == 1) {
+        // Bevel: shadow/highlight at color band boundaries
+        float w = uBevelWidth;
+        float b1 = smoothstep(-w, w, t - 0.25) * 2.0 - 1.0;
+        float b2 = smoothstep(-w, w, t - 0.50) * 2.0 - 1.0;
+        float b3 = smoothstep(-w, w, t - 0.75) * 2.0 - 1.0;
+        float m1 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.25));
+        float m2 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.50));
+        float m3 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.75));
+        shade = (b1 * m1 + b2 * m2 + b3 * m3) * 0.25;
+    } else if (uLightingType == 2) {
+        // Gradient: directional light across image (0 = from top)
+        vec2 lightDir = vec2(cos(uLightAngle), sin(uLightAngle));
+        shade = dot(uv - 0.5, lightDir);
+    } else if (uLightingType == 3) {
+        // Vignette: darken toward edges
+        float dist = length(uv - 0.5) * 2.0;
+        shade = -dist * 0.5;
+    }
+    return clamp(color + shade * uLightStrength, 0.0, 1.0);
 }
 
 float hash(vec2 p) {
@@ -192,6 +221,7 @@ void main() {
     float t = dot(uv - 0.5, dir) + 0.5;
     t = clamp(t, 0.0, 1.0);
     vec3 color = paletteColor(t);
+    color = applyLighting(color, t, uv);
     // Apply noise grain
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
@@ -218,6 +248,10 @@ uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
 uniform float uRippleFreq;
+uniform int uLightingType;
+uniform float uLightStrength;
+uniform float uBevelWidth;
+uniform float uLightAngle;
 uniform float uNoise;
 uniform float uDither;
 
@@ -254,6 +288,31 @@ vec3 paletteColor(float t) {
     color = mix(color, uColor3, f2);
     color = mix(color, uColor4, f3);
     return color;
+}
+
+vec3 applyLighting(vec3 color, float t, vec2 uv) {
+    if (uLightingType == 0) return color;
+    float shade = 0.0;
+    if (uLightingType == 1) {
+        // Bevel: shadow/highlight at color band boundaries
+        float w = uBevelWidth;
+        float b1 = smoothstep(-w, w, t - 0.25) * 2.0 - 1.0;
+        float b2 = smoothstep(-w, w, t - 0.50) * 2.0 - 1.0;
+        float b3 = smoothstep(-w, w, t - 0.75) * 2.0 - 1.0;
+        float m1 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.25));
+        float m2 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.50));
+        float m3 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.75));
+        shade = (b1 * m1 + b2 * m2 + b3 * m3) * 0.25;
+    } else if (uLightingType == 2) {
+        // Gradient: directional light across image (0 = from top)
+        vec2 lightDir = vec2(cos(uLightAngle), sin(uLightAngle));
+        shade = dot(uv - 0.5, lightDir);
+    } else if (uLightingType == 3) {
+        // Vignette: darken toward edges
+        float dist = length(uv - 0.5) * 2.0;
+        shade = -dist * 0.5;
+    }
+    return clamp(color + shade * uLightStrength, 0.0, 1.0);
 }
 
 float hash(vec2 p) {
@@ -299,6 +358,7 @@ void main() {
     float t = sin(v * 3.14159) * 0.5 + 0.5;
 
     vec3 color = paletteColor(t);
+    color = applyLighting(color, t, uv);
     // Apply noise grain
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
@@ -326,6 +386,10 @@ uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
 uniform float uRippleFreq;
+uniform int uLightingType;
+uniform float uLightStrength;
+uniform float uBevelWidth;
+uniform float uLightAngle;
 uniform float uNoise;
 uniform float uDither;
 
@@ -362,6 +426,31 @@ vec3 paletteColor(float t) {
     color = mix(color, uColor3, f2);
     color = mix(color, uColor4, f3);
     return color;
+}
+
+vec3 applyLighting(vec3 color, float t, vec2 uv) {
+    if (uLightingType == 0) return color;
+    float shade = 0.0;
+    if (uLightingType == 1) {
+        // Bevel: shadow/highlight at color band boundaries
+        float w = uBevelWidth;
+        float b1 = smoothstep(-w, w, t - 0.25) * 2.0 - 1.0;
+        float b2 = smoothstep(-w, w, t - 0.50) * 2.0 - 1.0;
+        float b3 = smoothstep(-w, w, t - 0.75) * 2.0 - 1.0;
+        float m1 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.25));
+        float m2 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.50));
+        float m3 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.75));
+        shade = (b1 * m1 + b2 * m2 + b3 * m3) * 0.25;
+    } else if (uLightingType == 2) {
+        // Gradient: directional light across image (0 = from top)
+        vec2 lightDir = vec2(cos(uLightAngle), sin(uLightAngle));
+        shade = dot(uv - 0.5, lightDir);
+    } else if (uLightingType == 3) {
+        // Vignette: darken toward edges
+        float dist = length(uv - 0.5) * 2.0;
+        shade = -dist * 0.5;
+    }
+    return clamp(color + shade * uLightStrength, 0.0, 1.0);
 }
 
 float hash(vec2 p) {
@@ -412,6 +501,7 @@ void main() {
     t = t * t * (3.0 - 2.0 * t);
 
     vec3 color = paletteColor(t);
+    color = applyLighting(color, t, uv);
     // Apply noise grain
     float n = hash(gl_FragCoord.xy);
     color += n * uNoise * 0.3;
@@ -438,6 +528,10 @@ uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
 uniform float uRippleFreq;
+uniform int uLightingType;
+uniform float uLightStrength;
+uniform float uBevelWidth;
+uniform float uLightAngle;
 uniform float uNoise;
 uniform float uDither;
 
@@ -474,6 +568,31 @@ vec3 paletteColor(float t) {
     color = mix(color, uColor3, f2);
     color = mix(color, uColor4, f3);
     return color;
+}
+
+vec3 applyLighting(vec3 color, float t, vec2 uv) {
+    if (uLightingType == 0) return color;
+    float shade = 0.0;
+    if (uLightingType == 1) {
+        // Bevel: shadow/highlight at color band boundaries
+        float w = uBevelWidth;
+        float b1 = smoothstep(-w, w, t - 0.25) * 2.0 - 1.0;
+        float b2 = smoothstep(-w, w, t - 0.50) * 2.0 - 1.0;
+        float b3 = smoothstep(-w, w, t - 0.75) * 2.0 - 1.0;
+        float m1 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.25));
+        float m2 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.50));
+        float m3 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.75));
+        shade = (b1 * m1 + b2 * m2 + b3 * m3) * 0.25;
+    } else if (uLightingType == 2) {
+        // Gradient: directional light across image (0 = from top)
+        vec2 lightDir = vec2(cos(uLightAngle), sin(uLightAngle));
+        shade = dot(uv - 0.5, lightDir);
+    } else if (uLightingType == 3) {
+        // Vignette: darken toward edges
+        float dist = length(uv - 0.5) * 2.0;
+        shade = -dist * 0.5;
+    }
+    return clamp(color + shade * uLightStrength, 0.0, 1.0);
 }
 
 float hash(vec2 p) {
@@ -544,6 +663,7 @@ void main() {
 
     // Map to palette
     vec3 color = paletteColor(height);
+    color = applyLighting(color, height, uv);
 
     // Apply noise grain
     float n = hash(gl_FragCoord.xy);
@@ -571,6 +691,10 @@ uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
 uniform float uRippleFreq;
+uniform int uLightingType;
+uniform float uLightStrength;
+uniform float uBevelWidth;
+uniform float uLightAngle;
 uniform float uNoise;
 uniform float uDither;
 
@@ -607,6 +731,31 @@ vec3 paletteColor(float t) {
     color = mix(color, uColor3, f2);
     color = mix(color, uColor4, f3);
     return color;
+}
+
+vec3 applyLighting(vec3 color, float t, vec2 uv) {
+    if (uLightingType == 0) return color;
+    float shade = 0.0;
+    if (uLightingType == 1) {
+        // Bevel: shadow/highlight at color band boundaries
+        float w = uBevelWidth;
+        float b1 = smoothstep(-w, w, t - 0.25) * 2.0 - 1.0;
+        float b2 = smoothstep(-w, w, t - 0.50) * 2.0 - 1.0;
+        float b3 = smoothstep(-w, w, t - 0.75) * 2.0 - 1.0;
+        float m1 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.25));
+        float m2 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.50));
+        float m3 = 1.0 - smoothstep(0.0, w * 2.0, abs(t - 0.75));
+        shade = (b1 * m1 + b2 * m2 + b3 * m3) * 0.25;
+    } else if (uLightingType == 2) {
+        // Gradient: directional light across image (0 = from top)
+        vec2 lightDir = vec2(cos(uLightAngle), sin(uLightAngle));
+        shade = dot(uv - 0.5, lightDir);
+    } else if (uLightingType == 3) {
+        // Vignette: darken toward edges
+        float dist = length(uv - 0.5) * 2.0;
+        shade = -dist * 0.5;
+    }
+    return clamp(color + shade * uLightStrength, 0.0, 1.0);
 }
 
 float hash(vec2 p) {
@@ -646,6 +795,7 @@ void main() {
     float t = clamp(d * uScale, 0.0, 1.0);
 
     vec3 color = paletteColor(t);
+    color = applyLighting(color, t, uv);
 
     // Apply noise grain
     float n = hash(gl_FragCoord.xy);

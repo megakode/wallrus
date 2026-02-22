@@ -305,10 +305,9 @@ impl WallrusWindow {
         distort_strength_scale.set_hexpand(true);
         distort_strength_scale.set_draw_value(true);
         distort_strength_scale.set_value_pos(gtk4::PositionType::Right);
-        distort_strength_scale.set_sensitive(false); // disabled when "None"
-
         let distort_strength_row = adw::ActionRow::builder().title("Strength").build();
         distort_strength_row.add_suffix(&distort_strength_scale);
+        distort_strength_row.set_visible(false); // hidden when "None"
 
         // Hint labels below the strength slider (only for Swirl)
         let distort_strength_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -421,6 +420,110 @@ impl WallrusWindow {
         effects_group.add(&dither_row);
 
         // =====================================================================
+        // Lighting section
+        // =====================================================================
+
+        // --- Lighting type dropdown ---
+        let lighting_list = gtk4::StringList::new(&["None", "Bevel", "Gradient", "Vignette"]);
+        let lighting_dropdown = gtk4::DropDown::new(Some(lighting_list), gtk4::Expression::NONE);
+        lighting_dropdown.set_selected(0);
+
+        let lighting_row = adw::ActionRow::builder().title("Type").build();
+        lighting_row.add_suffix(&lighting_dropdown);
+        lighting_row.set_activatable_widget(Some(&lighting_dropdown));
+
+        // --- Lighting strength slider ---
+        let light_strength_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+        light_strength_scale.set_value(0.0);
+        light_strength_scale.set_hexpand(true);
+        light_strength_scale.set_draw_value(true);
+        light_strength_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let light_strength_row = adw::ActionRow::builder().title("Strength").build();
+        light_strength_row.add_suffix(&light_strength_scale);
+        light_strength_row.set_visible(false); // hidden when "None"
+
+        // Hint labels below the strength slider
+        let light_strength_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let ls_off_label = gtk4::Label::new(Some("off"));
+        ls_off_label.add_css_class("dim-label");
+        ls_off_label.add_css_class("caption");
+        ls_off_label.set_halign(gtk4::Align::Start);
+        ls_off_label.set_hexpand(true);
+        let ls_strong_label = gtk4::Label::new(Some("strong"));
+        ls_strong_label.add_css_class("dim-label");
+        ls_strong_label.add_css_class("caption");
+        ls_strong_label.set_halign(gtk4::Align::End);
+        light_strength_hints.append(&ls_off_label);
+        light_strength_hints.append(&ls_strong_label);
+        light_strength_hints.set_margin_start(12);
+        light_strength_hints.set_margin_end(12);
+        light_strength_hints.set_margin_bottom(4);
+
+        let light_strength_hint_row = gtk4::ListBoxRow::new();
+        light_strength_hint_row.set_child(Some(&light_strength_hints));
+        light_strength_hint_row.set_activatable(false);
+        light_strength_hint_row.set_selectable(false);
+        light_strength_hint_row.set_visible(false); // hidden when "None"
+
+        // --- Bevel width slider ---
+        let bevel_width_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.01, 0.15, 0.01);
+        bevel_width_scale.set_value(0.05);
+        bevel_width_scale.set_hexpand(true);
+        bevel_width_scale.set_draw_value(true);
+        bevel_width_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let bevel_width_row = adw::ActionRow::builder().title("Width").build();
+        bevel_width_row.add_suffix(&bevel_width_scale);
+        bevel_width_row.set_visible(false); // only visible for "Bevel"
+
+        // Hint labels below the width slider
+        let bevel_width_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let bw_thin_label = gtk4::Label::new(Some("thin"));
+        bw_thin_label.add_css_class("dim-label");
+        bw_thin_label.add_css_class("caption");
+        bw_thin_label.set_halign(gtk4::Align::Start);
+        bw_thin_label.set_hexpand(true);
+        let bw_wide_label = gtk4::Label::new(Some("wide"));
+        bw_wide_label.add_css_class("dim-label");
+        bw_wide_label.add_css_class("caption");
+        bw_wide_label.set_halign(gtk4::Align::End);
+        bevel_width_hints.append(&bw_thin_label);
+        bevel_width_hints.append(&bw_wide_label);
+        bevel_width_hints.set_margin_start(12);
+        bevel_width_hints.set_margin_end(12);
+        bevel_width_hints.set_margin_bottom(4);
+
+        let bevel_width_hint_row = gtk4::ListBoxRow::new();
+        bevel_width_hint_row.set_child(Some(&bevel_width_hints));
+        bevel_width_hint_row.set_activatable(false);
+        bevel_width_hint_row.set_selectable(false);
+        bevel_width_hint_row.set_visible(false); // only visible for "Bevel"
+
+        // --- Light angle slider ---
+        let light_angle_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 360.0, 1.0);
+        light_angle_scale.set_value(45.0);
+        light_angle_scale.set_hexpand(true);
+        light_angle_scale.set_draw_value(true);
+        light_angle_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let light_angle_row = adw::ActionRow::builder().title("Angle").build();
+        light_angle_row.add_suffix(&light_angle_scale);
+        light_angle_row.set_visible(false); // only visible for "Gradient"
+
+        let lighting_group = adw::PreferencesGroup::new();
+        lighting_group.set_title("Lighting");
+        lighting_group.add(&lighting_row);
+        lighting_group.add(&light_strength_row);
+        lighting_group.add(&light_strength_hint_row);
+        lighting_group.add(&bevel_width_row);
+        lighting_group.add(&bevel_width_hint_row);
+        lighting_group.add(&light_angle_row);
+
+        // =====================================================================
         // Export section
         // =====================================================================
 
@@ -511,6 +614,7 @@ impl WallrusWindow {
         right_box.set_hexpand(true);
         right_box.append(&preview_group);
         right_box.append(&effects_group);
+        right_box.append(&lighting_group);
         right_box.append(&export_group);
         right_box.append(&button_box);
 
@@ -694,6 +798,7 @@ impl WallrusWindow {
         // --- Distortion type change ---
         {
             let state = state.clone();
+            let distort_strength_row = distort_strength_row.clone();
             let distort_strength_scale = distort_strength_scale.clone();
             let distort_strength_hint_row = distort_strength_hint_row.clone();
             let ripple_freq_row = ripple_freq_row.clone();
@@ -707,8 +812,8 @@ impl WallrusWindow {
                         renderer.distort_strength = 0.0;
                     }
                 }
-                // Sensitivity & visibility
-                distort_strength_scale.set_sensitive(distort_type != 0);
+                // Visibility
+                distort_strength_row.set_visible(distort_type != 0);
                 if distort_type == 0 {
                     distort_strength_scale.set_value(0.0);
                 }
@@ -754,6 +859,62 @@ impl WallrusWindow {
             dither_switch.connect_active_notify(move |switch| {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.dither = if switch.is_active() { 1.0 } else { 0.0 };
+                }
+            });
+        }
+
+        // --- Lighting type change ---
+        {
+            let state = state.clone();
+            let light_strength_row = light_strength_row.clone();
+            let light_strength_hint_row = light_strength_hint_row.clone();
+            let bevel_width_row = bevel_width_row.clone();
+            let bevel_width_hint_row = bevel_width_hint_row.clone();
+            let light_angle_row = light_angle_row.clone();
+            lighting_dropdown.connect_selected_notify(move |dropdown| {
+                let idx = dropdown.selected() as i32; // 0=None, 1=Bevel, 2=Gradient, 3=Vignette
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.lighting_type = idx;
+                }
+                // Visibility logic per the specification table
+                let show_strength = idx != 0;
+                light_strength_row.set_visible(show_strength);
+                light_strength_hint_row.set_visible(show_strength);
+                bevel_width_row.set_visible(idx == 1);
+                bevel_width_hint_row.set_visible(idx == 1);
+                light_angle_row.set_visible(idx == 2);
+            });
+        }
+
+        // --- Light strength change ---
+        {
+            let state = state.clone();
+            light_strength_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.light_strength = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Bevel width change ---
+        {
+            let state = state.clone();
+            bevel_width_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.bevel_width = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Light angle change ---
+        {
+            let state = state.clone();
+            light_angle_scale.connect_value_changed(move |scale| {
+                // Convert degrees to radians, with offset so 0° = light from top
+                let degrees = scale.value() as f32;
+                let radians = (degrees - 90.0).to_radians();
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.light_angle = radians;
                 }
             });
         }
