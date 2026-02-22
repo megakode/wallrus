@@ -88,9 +88,9 @@ launcher.
 
 ## Custom palettes
 
-Palette images are 400×400 px PNGs with four horizontal color bands (100 px
-each, top to bottom). Wallrus samples the center pixel of each band to extract
-the four colors.
+Palette images are 1x4 px PNGs — one pixel per color, top to bottom (4 colors
+total). Wallrus scales them to 80x80 thumbnails in the UI and reads each pixel
+directly to extract colors.
 
 Place them in subdirectories under `~/.local/share/wallrus/palettes/`:
 

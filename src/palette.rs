@@ -1,4 +1,4 @@
-/// Palette image handling — extract colors from 400x400 palette images
+/// Palette image handling — extract colors from 1x4 palette images
 /// and list available palette images organized by category (subfolder).
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -8,9 +8,10 @@ pub type PaletteCategories = BTreeMap<String, Vec<PathBuf>>;
 
 /// Extract 4 colors from a palette image.
 ///
-/// The image is expected to be 400x400px with 4 horizontal color bands
-/// (each 100px tall). We sample the center pixel of each band.
-/// If the image has a different height, we divide it into 4 equal bands.
+/// The image is expected to be 1x4px (one pixel per color, top to bottom).
+/// For backward compatibility, larger images are also supported — the image
+/// is divided into 4 equal horizontal bands and the center pixel of each
+/// band is sampled.
 pub fn extract_colors_from_image(path: &Path) -> Result<[[f32; 3]; 4], String> {
     let img = image::open(path).map_err(|e| format!("Failed to load image: {}", e))?;
     let rgb = img.to_rgb8();
