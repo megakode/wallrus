@@ -43,12 +43,10 @@ impl WallrusWindow {
         // --- Shader preset dropdown ---
         let preset_names = shader_presets::preset_names();
         let preset_list = gtk4::StringList::new(preset_names);
-        let preset_dropdown = gtk4::DropDown::new(Some(preset_list), gtk4::Expression::NONE);
-        preset_dropdown.set_selected(0);
-
-        let preset_row = adw::ActionRow::builder().title("Type").build();
-        preset_row.add_suffix(&preset_dropdown);
-        preset_row.set_activatable_widget(Some(&preset_dropdown));
+        let preset_row = adw::ComboRow::new();
+        preset_row.set_title("Type");
+        preset_row.set_model(Some(&preset_list));
+        preset_row.set_selected(0);
 
         // =====================================================================
         // Palette section — category dropdown + FlowBox thumbnail browser
@@ -61,15 +59,12 @@ impl WallrusWindow {
         // Category dropdown
         let category_str_refs: Vec<&str> = category_names.iter().map(|s| s.as_str()).collect();
         let category_string_list = gtk4::StringList::new(&category_str_refs);
-        let category_dropdown =
-            gtk4::DropDown::new(Some(category_string_list), gtk4::Expression::NONE);
+        let category_row = adw::ComboRow::new();
+        category_row.set_title("Category");
+        category_row.set_model(Some(&category_string_list));
         if !category_names.is_empty() {
-            category_dropdown.set_selected(0);
+            category_row.set_selected(0);
         }
-
-        let category_row = adw::ActionRow::builder().title("Category").build();
-        category_row.add_suffix(&category_dropdown);
-        category_row.set_activatable_widget(Some(&category_dropdown));
 
         // FlowBox for palette thumbnails
         let palette_flowbox = gtk4::FlowBox::new();
@@ -332,12 +327,10 @@ impl WallrusWindow {
 
         // --- Distortion type dropdown ---
         let distort_list = gtk4::StringList::new(&["None", "Swirl", "Ripple"]);
-        let distort_dropdown = gtk4::DropDown::new(Some(distort_list), gtk4::Expression::NONE);
-        distort_dropdown.set_selected(0);
-
-        let distort_row = adw::ActionRow::builder().title("Type").build();
-        distort_row.add_suffix(&distort_dropdown);
-        distort_row.set_activatable_widget(Some(&distort_dropdown));
+        let distort_row = adw::ComboRow::new();
+        distort_row.set_title("Type");
+        distort_row.set_model(Some(&distort_list));
+        distort_row.set_selected(0);
 
         // --- Distortion strength slider ---
         let distort_strength_scale =
@@ -481,12 +474,10 @@ impl WallrusWindow {
 
         // --- Lighting type dropdown ---
         let lighting_list = gtk4::StringList::new(&["None", "Bevel", "Gradient", "Vignette"]);
-        let lighting_dropdown = gtk4::DropDown::new(Some(lighting_list), gtk4::Expression::NONE);
-        lighting_dropdown.set_selected(0);
-
-        let lighting_row = adw::ActionRow::builder().title("Type").build();
-        lighting_row.add_suffix(&lighting_dropdown);
-        lighting_row.set_activatable_widget(Some(&lighting_dropdown));
+        let lighting_row = adw::ComboRow::new();
+        lighting_row.set_title("Type");
+        lighting_row.set_model(Some(&lighting_list));
+        lighting_row.set_selected(0);
 
         // --- Lighting strength slider ---
         let light_strength_scale =
@@ -588,8 +579,9 @@ impl WallrusWindow {
             ExportResolution::Qhd.label(),
             ExportResolution::Uhd4k.label(),
         ]);
-        let resolution_dropdown =
-            gtk4::DropDown::new(Some(resolution_list), gtk4::Expression::NONE);
+        let resolution_row = adw::ComboRow::new();
+        resolution_row.set_title("Resolution");
+        resolution_row.set_model(Some(&resolution_list));
 
         // Default to the resolution closest to the current display
         let default_res_idx = gdk::Display::default()
@@ -612,11 +604,7 @@ impl WallrusWindow {
             })
             .map(|(w, h)| ExportResolution::best_index_for_display(w, h))
             .unwrap_or(0);
-        resolution_dropdown.set_selected(default_res_idx);
-
-        let resolution_row = adw::ActionRow::builder().title("Resolution").build();
-        resolution_row.add_suffix(&resolution_dropdown);
-        resolution_row.set_activatable_widget(Some(&resolution_dropdown));
+        resolution_row.set_selected(default_res_idx);
 
         let export_png_button = gtk4::Button::with_label("Export PNG");
         export_png_button.add_css_class("suggested-action");
@@ -712,8 +700,8 @@ impl WallrusWindow {
             let all_cats = all_categories.clone();
             let cat_names = category_names.clone();
             let populate = populate_flowbox.clone();
-            category_dropdown.connect_selected_notify(move |dropdown| {
-                let idx = dropdown.selected() as usize;
+            category_row.connect_selected_notify(move |combo| {
+                let idx = combo.selected() as usize;
                 if let Some(name) = cat_names.get(idx) {
                     if let Some(images) = all_cats.get(name) {
                         populate(images);
@@ -853,8 +841,8 @@ impl WallrusWindow {
         {
             let state = state.clone();
             let gl_area = gl_area.clone();
-            preset_dropdown.connect_selected_notify(move |dropdown| {
-                let idx = dropdown.selected();
+            preset_row.connect_selected_notify(move |combo| {
+                let idx = combo.selected();
                 let names = shader_presets::preset_names();
                 if let Some(name) = names.get(idx as usize) {
                     update_control_visibility(name);
@@ -935,8 +923,8 @@ impl WallrusWindow {
             let distort_strength_hint_row = distort_strength_hint_row.clone();
             let ripple_freq_row = ripple_freq_row.clone();
             let ripple_freq_hint_row = ripple_freq_hint_row.clone();
-            distort_dropdown.connect_selected_notify(move |dropdown| {
-                let idx = dropdown.selected();
+            distort_row.connect_selected_notify(move |combo| {
+                let idx = combo.selected();
                 let distort_type = idx as i32; // 0=None, 1=Swirl, 2=Ripple
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.distort_type = distort_type;
@@ -1019,8 +1007,8 @@ impl WallrusWindow {
             let bevel_width_row = bevel_width_row.clone();
             let bevel_width_hint_row = bevel_width_hint_row.clone();
             let light_angle_row = light_angle_row.clone();
-            lighting_dropdown.connect_selected_notify(move |dropdown| {
-                let idx = dropdown.selected() as i32; // 0=None, 1=Bevel, 2=Gradient, 3=Vignette
+            lighting_row.connect_selected_notify(move |combo| {
+                let idx = combo.selected() as i32; // 0=None, 1=Bevel, 2=Gradient, 3=Vignette
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.lighting_type = idx;
                 }
@@ -1073,11 +1061,11 @@ impl WallrusWindow {
 
         let make_export_handler = |format: ExportFormat| {
             let state = state.clone();
-            let resolution_dropdown = resolution_dropdown.clone();
+            let resolution_row = resolution_row.clone();
             let gl_area = gl_area.clone();
             let window_ref = window.clone();
             move |_button: &gtk4::Button| {
-                let resolution = ExportResolution::from_index(resolution_dropdown.selected());
+                let resolution = ExportResolution::from_index(resolution_row.selected());
                 let (w, h) = resolution.dimensions();
 
                 gl_area.make_current();
@@ -1139,11 +1127,11 @@ impl WallrusWindow {
         // --- Set as wallpaper handler ---
         {
             let state = state.clone();
-            let resolution_dropdown = resolution_dropdown.clone();
+            let resolution_row = resolution_row.clone();
             let gl_area = gl_area.clone();
             let window_ref = window.clone();
             set_wallpaper_button.connect_clicked(move |_| {
-                let resolution = ExportResolution::from_index(resolution_dropdown.selected());
+                let resolution = ExportResolution::from_index(resolution_row.selected());
                 let (w, h) = resolution.dimensions();
 
                 gl_area.make_current();
