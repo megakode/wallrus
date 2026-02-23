@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 uniform vec3 iResolution;
 uniform float iTime;
 uniform float uAngle;

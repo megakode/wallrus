@@ -351,6 +351,7 @@ pub fn new_shared_state() -> SharedRendererState {
 /// Also loads the initial shader preset once the GL context is ready.
 pub fn create_gl_area(state: SharedRendererState) -> GLArea {
     let gl_area = GLArea::new();
+    gl_area.set_use_es(true);
     gl_area.set_auto_render(true);
     gl_area.set_has_depth_buffer(false);
     gl_area.set_has_stencil_buffer(false);
