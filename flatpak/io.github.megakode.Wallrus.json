@@ -13,7 +13,7 @@
         "--socket=wayland",
         "--device=dri",
         "--filesystem=xdg-pictures/Wallrus:create",
-        "--filesystem=~/.local/share/wallrus/palettes:create"
+        "--filesystem=~/.local/share/wallrus/palettes:ro"
     ],
     "build-options": {
         "append-path": "/usr/lib/sdk/rust-stable/bin",
