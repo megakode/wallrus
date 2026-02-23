@@ -86,6 +86,37 @@ PREFIX=/usr/local ./install.sh
 You may need to log out and back in for the application icon to appear in your
 launcher.
 
+### Nix
+
+A [Nix flake](https://nix.dev/concepts/flakes) is provided. You can run
+Wallrus directly without installing:
+
+```
+nix run github:megakode/wallrus
+```
+
+To add it to a NixOS configuration:
+
+```nix
+# flake.nix
+{
+  inputs.wallrus.url = "github:megakode/wallrus";
+  # ...
+}
+
+# configuration.nix
+environment.systemPackages = [
+  inputs.wallrus.packages.${pkgs.system}.default
+];
+```
+
+A development shell with all native dependencies, `rust-analyzer`, `clippy`,
+and `rustfmt` is also available:
+
+```
+nix develop
+```
+
 ## Custom palettes
 
 Palette images are 1x4 px PNGs — one pixel per color, top to bottom (4 colors

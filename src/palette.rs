@@ -89,6 +89,16 @@ pub fn bundled_palettes_dir() -> Option<PathBuf> {
         }
     }
 
+    // Installed (prefix-relative): <prefix>/bin/wallrus -> <prefix>/share/wallrus/palettes
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(prefix) = exe.parent().and_then(|p| p.parent()) {
+            let prefix_path = prefix.join("share").join("wallrus").join("palettes");
+            if prefix_path.is_dir() {
+                return Some(prefix_path);
+            }
+        }
+    }
+
     // Installed: /usr/share/wallrus/palettes
     let system_path = PathBuf::from("/usr/share/wallrus/palettes");
     if system_path.is_dir() {
