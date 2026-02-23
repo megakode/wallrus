@@ -49,7 +49,7 @@
                 {
                     "type": "git",
                     "url": "https://github.com/megakode/wallrus.git",
-                    "tag": "v1.0.0"
+                    "tag": "1.0.0"
                 },
                 "cargo-sources.json",
                 {
