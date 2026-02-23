@@ -15,7 +15,7 @@
 }:
 rustPlatform.buildRustPackage {
   pname = "wallrus";
-  version = "0.1.0";
+  version = "1.0.0";
 
   src = lib.fileset.toSource {
     root = ./..;
@@ -48,16 +48,16 @@ rustPlatform.buildRustPackage {
 
   postInstall = ''
     # Desktop file
-    install -Dm644 data/com.megakode.Wallrus.desktop \
-      $out/share/applications/com.megakode.Wallrus.desktop
+    install -Dm644 data/io.github.megakode.Wallrus.desktop \
+      $out/share/applications/io.github.megakode.Wallrus.desktop
 
     # Icon
-    install -Dm644 data/icons/com.megakode.Wallrus.svg \
-      $out/share/icons/hicolor/scalable/apps/com.megakode.Wallrus.svg
+    install -Dm644 data/icons/io.github.megakode.Wallrus.svg \
+      $out/share/icons/hicolor/scalable/apps/io.github.megakode.Wallrus.svg
 
     # AppStream metainfo
-    install -Dm644 data/com.megakode.Wallrus.metainfo.xml \
-      $out/share/metainfo/com.megakode.Wallrus.metainfo.xml
+    install -Dm644 data/io.github.megakode.Wallrus.metainfo.xml \
+      $out/share/metainfo/io.github.megakode.Wallrus.metainfo.xml
 
     # Bundled palettes
     mkdir -p $out/share/wallrus/palettes

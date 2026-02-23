@@ -9,7 +9,7 @@ mod window;
 
 use application::WallrusApplication;
 
-const APP_ID: &str = "com.megakode.Wallrus";
+const APP_ID: &str = "io.github.megakode.Wallrus";
 
 fn main() {
     let app = WallrusApplication::new(APP_ID);

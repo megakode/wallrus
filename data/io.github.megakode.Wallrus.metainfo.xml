@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.megakode.Wallrus</id>
+  <id>io.github.megakode.Wallrus</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Wallrus</name>
@@ -13,9 +13,22 @@
       resolution or set directly as your GNOME desktop wallpaper.
     </p>
   </description>
-  <launchable type="desktop-id">com.megakode.Wallrus.desktop</launchable>
+  <launchable type="desktop-id">io.github.megakode.Wallrus.desktop</launchable>
   <url type="homepage">https://github.com/megakode/wallrus</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Wallrus main window showing palette selection, pattern controls, and live preview</caption>
+      <image>https://raw.githubusercontent.com/megakode/wallrus/main/data/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-02-23">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
   <provides>
     <binary>wallrus</binary>
   </provides>

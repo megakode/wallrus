@@ -1280,7 +1280,7 @@ impl WallrusWindow {
             action_about.connect_activate(move |_, _| {
                 let about = adw::AboutWindow::builder()
                     .application_name("Wallrus")
-                    .application_icon("com.megakode.Wallrus")
+                    .application_icon("io.github.megakode.Wallrus")
                     .developer_name("Peter Boné")
                     .version(env!("CARGO_PKG_VERSION"))
                     .website("https://github.com/megakode/wallrus")

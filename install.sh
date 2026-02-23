@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_ID="com.megakode.Wallrus"
+APP_ID="io.github.megakode.Wallrus"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PREFIX="${PREFIX:-$HOME/.local}"

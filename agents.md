@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) that generates abstract wallpapers using GPU shaders. It has a GTK4/libadwaita GUI with a live shader preview, **palette-image-based color selection** (browsing 400x400px palette images organized in category subfolders, displayed as thumbnails in a grid), parameter controls, multiple shader presets, image export, and the ability to set the GNOME desktop wallpaper directly.
+Build a GNOME application called **Wallrus** (app ID: `io.github.megakode.Wallrus`) that generates abstract wallpapers using GPU shaders. It has a GTK4/libadwaita GUI with a live shader preview, **palette-image-based color selection** (browsing 400x400px palette images organized in category subfolders, displayed as thumbnails in a grid), parameter controls, multiple shader presets, image export, and the ability to set the GNOME desktop wallpaper directly.
 
 ## Instructions
 
@@ -51,7 +51,7 @@ Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) th
 - **`PresetControls` struct** has fields: `has_angle`, `has_scale`, `has_speed`, `has_center`, `speed_label`, `speed_range`, `scale_range`. The UI updates label, range, visibility, and defaults when switching presets.
 - **Per-preset scale ranges:** The `scale_range` field on `PresetControls` allows each shader to define its own scale slider range. Terrain uses 0.1–2.0, Circle uses 0.5–3.0, others use 0.1–5.0.
 - **Pattern section** — titled "Pattern" in the UI, contains Type dropdown + parameter sliders.
-- **App name:** Wallrus, **App ID:** `com.megakode.Wallrus`, **Author:** megakode
+- **App name:** Wallrus, **App ID:** `io.github.megakode.Wallrus`, **Author:** megakode
 
 ## Discoveries
 
@@ -89,9 +89,9 @@ Build a GNOME application called **Wallrus** (app ID: `com.megakode.Wallrus`) th
 - `src/wallpaper.rs` — GNOME wallpaper setting via gsettings (light + dark URIs). 34 lines.
 - `install.sh` — Build + install script (release binary, desktop file, icon, metainfo, palettes to `~/.local` prefix). 57 lines.
 - `data/palettes/` — Bundled palette PNGs in category subfolders (cold, dark, fall, gradient, light, pastel, retro, sunset, warm, winter). ~1,459 palette images total.
-- `data/icons/com.megakode.Wallrus.svg` — App icon.
-- `data/com.megakode.Wallrus.desktop` — Desktop entry.
-- `data/com.megakode.Wallrus.metainfo.xml` — AppStream metadata.
+- `data/icons/io.github.megakode.Wallrus.svg` — App icon.
+- `data/io.github.megakode.Wallrus.desktop` — Desktop entry.
+- `data/io.github.megakode.Wallrus.metainfo.xml` — AppStream metadata.
 
 ## Architecture
 

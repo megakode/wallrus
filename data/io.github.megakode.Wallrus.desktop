@@ -2,7 +2,7 @@
 Name=Wallrus
 Comment=Generate abstract wallpapers using shaders
 Exec=wallrus
-Icon=com.megakode.Wallrus
+Icon=io.github.megakode.Wallrus
 Terminal=false
 Type=Application
 Categories=Graphics;GTK;
