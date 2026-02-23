@@ -13,10 +13,7 @@
         "--socket=wayland",
         "--device=dri",
         "--filesystem=xdg-pictures/Wallrus:create",
-        "--filesystem=~/.local/share/backgrounds:create",
-        "--filesystem=~/.local/share/wallrus/palettes:create",
-        "--talk-name=org.freedesktop.Flatpak",
-        "--metadata=X-DConf=migrate-path=/io/github/megakode/Wallrus/"
+        "--filesystem=~/.local/share/wallrus/palettes:create"
     ],
     "build-options": {
         "append-path": "/usr/lib/sdk/rust-stable/bin",
