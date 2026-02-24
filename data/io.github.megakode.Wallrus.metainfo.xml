@@ -5,6 +5,9 @@
   <project_license>GPL-3.0-or-later</project_license>
   <name>Wallrus</name>
   <summary>Generate abstract wallpapers using shaders</summary>
+  <developer id="io.github.megakode">
+    <name>Peter Boné</name>
+  </developer>
   <description>
     <p>
       Wallrus lets you create beautiful abstract wallpapers using GPU shaders.
