@@ -8,9 +8,10 @@
   <description>
     <p>
       Wallrus lets you create beautiful abstract wallpapers using GPU shaders.
-      Choose from preset shaders including gradients, plasma, noise, and wave
-      patterns. Customize colors and parameters, then export at up to 4K
-      resolution or set directly as your GNOME desktop wallpaper.
+      Choose from five shader presets — Bars, Circle, Plasma, Waves, and
+      Terrain — with effects like distortion, lighting, and noise. Customize
+      colors with hundreds of bundled palettes or create your own, then export
+      at up to 4K resolution or set directly as your GNOME desktop wallpaper.
     </p>
   </description>
   <launchable type="desktop-id">io.github.megakode.Wallrus.desktop</launchable>

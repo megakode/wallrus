@@ -678,11 +678,8 @@ impl WallrusWindow {
         resolution_row.set_model(Some(&resolution_list));
         resolution_row.set_selected(0); // Default to Display
 
-        let export_png_button = gtk4::Button::with_label("Export PNG");
-        export_png_button.set_tooltip_text(Some("Export as PNG (Ctrl+E)"));
-
-        let export_jpg_button = gtk4::Button::with_label("Export JPEG");
-        export_jpg_button.set_tooltip_text(Some("Export as JPEG (Ctrl+Shift+E)"));
+        let export_button = gtk4::Button::with_label("Export");
+        export_button.set_tooltip_text(Some("Export image (Ctrl+E)"));
 
         let set_wallpaper_button = gtk4::Button::with_label("Set as Wallpaper");
         set_wallpaper_button.add_css_class("suggested-action");
@@ -692,8 +689,7 @@ impl WallrusWindow {
         button_box.set_halign(gtk4::Align::Center);
         button_box.set_margin_top(8);
         button_box.set_margin_bottom(8);
-        button_box.append(&export_png_button);
-        button_box.append(&export_jpg_button);
+        button_box.append(&export_button);
         button_box.append(&set_wallpaper_button);
 
         let export_group = adw::PreferencesGroup::new();
@@ -1236,7 +1232,7 @@ impl WallrusWindow {
         // Export handlers
         // =====================================================================
 
-        let make_export_handler = |format: ExportFormat| {
+        let make_export_handler = {
             let state = state.clone();
             let resolution_row = resolution_row.clone();
             let gl_area = gl_area.clone();
@@ -1272,31 +1268,38 @@ impl WallrusWindow {
                     .unwrap_or_default()
                     .as_secs();
 
+                // Default filename uses JPEG; user can switch filter to PNG in the dialog
                 let filename = format!(
-                    "wallrus_{}_{}.{}",
+                    "wallrus_{}_{}.jpg",
                     preset_name.to_lowercase(),
                     timestamp,
-                    format.extension()
                 );
 
                 let dialog = gtk4::FileDialog::new();
                 dialog.set_initial_name(Some(&filename));
 
-                let filter = gtk4::FileFilter::new();
-                match format {
-                    ExportFormat::Png => {
-                        filter.set_name(Some("PNG images"));
-                        filter.add_mime_type("image/png");
-                        filter.add_suffix("png");
-                    }
-                    ExportFormat::Jpeg => {
-                        filter.set_name(Some("JPEG images"));
-                        filter.add_mime_type("image/jpeg");
-                        filter.add_suffix("jpg");
-                        filter.add_suffix("jpeg");
-                    }
+                // Default to the user's Pictures folder (portal-safe hint)
+                if let Some(pictures_dir) = glib::user_special_dir(glib::UserDirectory::Pictures) {
+                    dialog.set_initial_folder(Some(&gio::File::for_path(pictures_dir)));
                 }
-                dialog.set_default_filter(Some(&filter));
+
+                // Offer both PNG and JPEG filters; user picks in the dialog
+                let png_filter = gtk4::FileFilter::new();
+                png_filter.set_name(Some("PNG images"));
+                png_filter.add_mime_type("image/png");
+                png_filter.add_suffix("png");
+
+                let jpeg_filter = gtk4::FileFilter::new();
+                jpeg_filter.set_name(Some("JPEG images"));
+                jpeg_filter.add_mime_type("image/jpeg");
+                jpeg_filter.add_suffix("jpg");
+                jpeg_filter.add_suffix("jpeg");
+
+                let filters = gio::ListStore::new::<gtk4::FileFilter>();
+                filters.append(&jpeg_filter);
+                filters.append(&png_filter);
+                dialog.set_filters(Some(&filters));
+                dialog.set_default_filter(Some(&jpeg_filter));
 
                 let window_clone = window_ref.clone();
                 dialog.save(
@@ -1305,6 +1308,12 @@ impl WallrusWindow {
                     move |result| match result {
                         Ok(file) => {
                             if let Some(path) = file.path() {
+                                // Determine format from the file extension
+                                let format = ExportFormat::from_extension(
+                                    path.extension()
+                                        .and_then(|e| e.to_str())
+                                        .unwrap_or("jpg"),
+                                );
                                 match export::save_pixels(&pixels, w, h, &path, format) {
                                     Ok(()) => {
                                         show_toast(
@@ -1332,8 +1341,7 @@ impl WallrusWindow {
             }
         };
 
-        export_png_button.connect_clicked(make_export_handler(ExportFormat::Png));
-        export_jpg_button.connect_clicked(make_export_handler(ExportFormat::Jpeg));
+        export_button.connect_clicked(make_export_handler);
 
         // --- Set as wallpaper handler ---
         // Shared logic for all wallpaper modes (Both / LightOnly / DarkOnly).
@@ -1382,19 +1390,12 @@ impl WallrusWindow {
         // Keyboard shortcuts via GActions
         // =====================================================================
 
-        let action_export_png = gio::SimpleAction::new("export-png", None);
+        let action_export = gio::SimpleAction::new("export", None);
         {
-            let btn = export_png_button.clone();
-            action_export_png.connect_activate(move |_, _| btn.emit_clicked());
+            let btn = export_button.clone();
+            action_export.connect_activate(move |_, _| btn.emit_clicked());
         }
-        window.add_action(&action_export_png);
-
-        let action_export_jpg = gio::SimpleAction::new("export-jpeg", None);
-        {
-            let btn = export_jpg_button.clone();
-            action_export_jpg.connect_activate(move |_, _| btn.emit_clicked());
-        }
-        window.add_action(&action_export_jpg);
+        window.add_action(&action_export);
 
         let action_set_wallpaper = gio::SimpleAction::new("set-wallpaper", None);
         {
@@ -1403,8 +1404,7 @@ impl WallrusWindow {
         }
         window.add_action(&action_set_wallpaper);
 
-        app.set_accels_for_action("win.export-png", &["<Control>e"]);
-        app.set_accels_for_action("win.export-jpeg", &["<Control><Shift>e"]);
+        app.set_accels_for_action("win.export", &["<Control>e"]);
         app.set_accels_for_action("win.set-wallpaper", &["<Control><Shift>w"]);
 
         // --- About dialog action ---

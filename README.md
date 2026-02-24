@@ -33,12 +33,11 @@ For those who prefer minimalist, colorful wallpapers and like changing colors on
   your palette for later. Saved palettes appear in a "Custom" category and can
   be deleted at any time.
 - **Blend control** — go from hard flag-like stripes to fully smooth gradients
-- **Effects** - Distortion, lightning and noise
+- **Effects** — Distortion, lighting, and noise
 - **Export** — PNG or JPEG at 1080p, 1440p, or 4K via a native save dialog
-  (default resolution auto-detected from your display)
+  (defaults to your Pictures folder; resolution auto-detected from your display)
 - **Set as wallpaper** — uses the XDG Desktop Portal to set your GNOME wallpaper
-- **Keyboard shortcuts** — Ctrl+E (export PNG), Ctrl+Shift+E (export JPEG),
-  Ctrl+Shift+W (set as wallpaper)
+- **Keyboard shortcuts** — Ctrl+E (export), Ctrl+Shift+W (set as wallpaper)
 
 ## Requirements
 

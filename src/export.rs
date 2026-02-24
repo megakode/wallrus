@@ -40,10 +40,11 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    pub fn extension(self) -> &'static str {
-        match self {
-            ExportFormat::Png => "png",
-            ExportFormat::Jpeg => "jpg",
+    /// Infer format from a file extension string.
+    pub fn from_extension(ext: &str) -> Self {
+        match ext.to_lowercase().as_str() {
+            "jpg" | "jpeg" => ExportFormat::Jpeg,
+            _ => ExportFormat::Png,
         }
     }
 }
