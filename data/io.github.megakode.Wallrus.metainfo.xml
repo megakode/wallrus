@@ -4,17 +4,18 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Wallrus</name>
-  <summary>Generate abstract wallpapers using shaders</summary>
+  <summary>Generate colorful abstract wallpapers</summary>
   <developer id="io.github.megakode">
     <name>Peter Boné</name>
   </developer>
   <description>
     <p>
-      Wallrus lets you create beautiful abstract wallpapers using GPU shaders.
-      Choose from five shader presets — Bars, Circle, Plasma, Waves, and
-      Terrain — with effects like distortion, lighting, and noise. Customize
-      colors with hundreds of bundled palettes or create your own, then export
-      at up to 4K resolution or set directly as your GNOME desktop wallpaper.
+      Wallrus lets you create colorful abstract wallpapers.
+    </p><p>  
+      Start with one of several preset patterns and add effects like distortion, lighting, and noise.
+     </p><p>
+     Pick a gradient from hundreds of bundled palettes or create your own, then export
+      or set directly as your desktop wallpaper.
     </p>
   </description>
   <launchable type="desktop-id">io.github.megakode.Wallrus.desktop</launchable>
@@ -26,6 +27,10 @@
       <image>https://raw.githubusercontent.com/megakode/wallrus/main/data/screenshots/main.png</image>
     </screenshot>
   </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#ffbe6f</color>
+    <color type="primary" scheme_preference="dark">#613583</color>
+  </branding>
   <content_rating type="oars-1.1" />
   <releases>
     <release version="1.0.0" date="2026-02-23">
