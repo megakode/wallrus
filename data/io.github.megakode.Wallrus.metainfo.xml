@@ -33,18 +33,18 @@
   </branding>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.0" date="2026-02-26">
+    <description>
+        <ul>
+        <li>Added ability to show palettes as gradients or colors</li>
+        <li>Added phone to export resolution presets</li>
+        </ul>
+    </description>
+    </release>
     <release version="1.0.0" date="2026-02-23">
       <description>
         <p>Initial release.</p>
       </description>
-    </release>
-    <release version="1.1.0" date="2026-02-26">
-	<description>
-	    <ul>
-	    <li>Added ability to show palettes as gradients or colors</li>
-	    <li>Added phone to export resolution presets</li>
-	    </ul>
-	</description>
     </release>
   </releases>
   <provides>
