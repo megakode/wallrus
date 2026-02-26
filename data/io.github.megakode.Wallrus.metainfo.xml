@@ -38,6 +38,14 @@
         <p>Initial release.</p>
       </description>
     </release>
+    <release version="1.1.0" date="2026-02-26">
+	<description>
+	    <ul>
+	    <li>Added ability to show palettes as gradients or colors</li>
+	    <li>Added phone to export resolution presets</li>
+	    </ul>
+	</description>
+    </release>
   </releases>
   <provides>
     <binary>wallrus</binary>
