@@ -5,7 +5,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use libadwaita as adw;
 use libadwaita::prelude::*;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -96,6 +96,9 @@ impl WallrusWindow {
         // Track paths for current FlowBox children
         let palette_paths: Rc<RefCell<Vec<PathBuf>>> = Rc::new(RefCell::new(Vec::new()));
 
+        // Whether palette thumbnails use smooth (bilinear) scaling vs nearest-neighbor
+        let smooth_gradient: Rc<Cell<bool>> = Rc::new(Cell::new(false));
+
         let palette_scroll = gtk4::ScrolledWindow::new();
         palette_scroll.set_child(Some(&palette_flowbox));
         palette_scroll.set_min_content_height(280);
@@ -109,6 +112,7 @@ impl WallrusWindow {
         let populate_flowbox = {
             let flowbox = palette_flowbox.clone();
             let paths = palette_paths.clone();
+            let smooth = smooth_gradient.clone();
             Rc::new(move |images: &[PathBuf], is_custom: bool, on_delete: Option<Rc<dyn Fn()>>| {
                 // Clear existing children
                 while let Some(child) = flowbox.first_child() {
@@ -133,12 +137,21 @@ impl WallrusWindow {
                 }
 
                 for path in images {
-                    match gdk_pixbuf::Pixbuf::from_file_at_scale(
-                        path.to_str().unwrap_or_default(),
-                        80,
-                        80,
-                        false,
-                    ) {
+                    let pixbuf_result = if smooth.get() {
+                        gdk_pixbuf::Pixbuf::from_file_at_scale(
+                            path.to_str().unwrap_or_default(),
+                            80,
+                            80,
+                            false,
+                        )
+                    } else {
+                        gdk_pixbuf::Pixbuf::from_file(path.to_str().unwrap_or_default())
+                            .and_then(|pb| {
+                                pb.scale_simple(80, 80, gdk_pixbuf::InterpType::Nearest)
+                                    .ok_or_else(|| glib::Error::new(gdk_pixbuf::PixbufError::Failed, "scale_simple failed"))
+                            })
+                    };
+                    match pixbuf_result {
                         Ok(pixbuf) => {
                             let texture = gdk::Texture::for_pixbuf(&pixbuf);
                             let image = gtk4::Picture::for_paintable(&texture);
@@ -234,6 +247,17 @@ impl WallrusWindow {
         palette_listbox_row.set_activatable(false);
         palette_listbox_row.set_selectable(false);
         palette_group.add(&palette_listbox_row);
+
+        // --- Smooth gradient toggle ---
+        let smooth_switch = gtk4::Switch::new();
+        smooth_switch.set_active(false);
+        smooth_switch.set_valign(gtk4::Align::Center);
+        let smooth_row = adw::ActionRow::builder()
+            .title("Show as smooth gradients")
+            .build();
+        smooth_row.add_suffix(&smooth_switch);
+        smooth_row.set_activatable_widget(Some(&smooth_switch));
+        palette_group.add(&smooth_row);
 
         // --- Color picker buttons (4, one per color band) ---
         let color_dialog = gtk4::ColorDialog::new();
@@ -831,6 +855,31 @@ impl WallrusWindow {
                             None
                         };
                         populate2(images, is_custom, on_delete);
+                    }
+                }
+            });
+
+            // Connect smooth gradient toggle change
+            let all_cats3 = all_categories.clone();
+            let cat_names3 = category_names.clone();
+            let populate3 = populate_flowbox.clone();
+            let smooth_state = smooth_gradient.clone();
+            let category_row_ref2 = category_row.clone();
+            let refresh_for_smooth = refresh_current_category.clone();
+            smooth_switch.connect_active_notify(move |switch| {
+                smooth_state.set(switch.is_active());
+                let idx = category_row_ref2.selected() as usize;
+                let names = cat_names3.borrow();
+                if let Some(name) = names.get(idx) {
+                    let cats = all_cats3.borrow();
+                    if let Some(images) = cats.get(name) {
+                        let is_custom = palette::is_custom_category(name);
+                        let on_delete = if is_custom {
+                            Some(refresh_for_smooth.borrow().as_ref().unwrap().clone())
+                        } else {
+                            None
+                        };
+                        populate3(images, is_custom, on_delete);
                     }
                 }
             });
