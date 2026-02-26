@@ -696,6 +696,7 @@ impl WallrusWindow {
             "1080p (1920x1080)",
             "1440p (2560x1440)",
             "4K (3840x2160)",
+            "Phone (1080x2400)",
         ]);
         let resolution_row = adw::ComboRow::new();
         resolution_row.set_title("Resolution");
@@ -1274,6 +1275,19 @@ impl WallrusWindow {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.light_angle = radians;
                 }
+            });
+        }
+
+        // =====================================================================
+        // Resolution change — update preview aspect ratio
+        // =====================================================================
+
+        {
+            let aspect_frame = aspect_frame.clone();
+            resolution_row.connect_selected_notify(move |combo| {
+                let resolution = ExportResolution::from_index(combo.selected(), display_dims);
+                let (w, h) = resolution.dimensions();
+                aspect_frame.set_ratio(w as f32 / h as f32);
             });
         }
 

@@ -7,6 +7,7 @@ pub enum ExportResolution {
     Hd,                // 1920x1080
     Qhd,               // 2560x1440
     Uhd4k,             // 3840x2160
+    Phone,             // 1080x2400 (portrait, 9:20)
 }
 
 impl ExportResolution {
@@ -16,17 +17,19 @@ impl ExportResolution {
             ExportResolution::Hd => (1920, 1080),
             ExportResolution::Qhd => (2560, 1440),
             ExportResolution::Uhd4k => (3840, 2160),
+            ExportResolution::Phone => (1080, 2400),
         }
     }
 
     /// Build from ComboRow index. Index 0 = Display (requires dimensions),
-    /// 1 = HD, 2 = QHD, 3 = 4K.
+    /// 1 = HD, 2 = QHD, 3 = 4K, 4 = Phone.
     pub fn from_index(index: u32, display_dims: (u32, u32)) -> Self {
         match index {
             0 => ExportResolution::Display(display_dims.0, display_dims.1),
             1 => ExportResolution::Hd,
             2 => ExportResolution::Qhd,
             3 => ExportResolution::Uhd4k,
+            4 => ExportResolution::Phone,
             _ => ExportResolution::Hd,
         }
     }
