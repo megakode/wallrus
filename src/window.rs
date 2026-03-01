@@ -9,6 +9,8 @@ use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use rand::Rng;
+
 use crate::export::{self, ExportFormat, ExportResolution};
 use crate::gl_renderer;
 use crate::palette;
@@ -101,8 +103,8 @@ impl WallrusWindow {
 
         let palette_scroll = gtk4::ScrolledWindow::new();
         palette_scroll.set_child(Some(&palette_flowbox));
-        palette_scroll.set_min_content_height(280);
-        palette_scroll.set_max_content_height(280);
+        palette_scroll.set_min_content_height(200);
+        palette_scroll.set_max_content_height(200);
         palette_scroll.set_propagate_natural_height(false);
         palette_scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
 
@@ -704,10 +706,11 @@ impl WallrusWindow {
         resolution_row.set_selected(0); // Default to Display
 
         let export_button = gtk4::Button::with_label("Export");
+        export_button.add_css_class("pill");
         export_button.set_tooltip_text(Some("Export image (Ctrl+E)"));
 
         let set_wallpaper_button = gtk4::Button::with_label("Set as Wallpaper");
-        set_wallpaper_button.add_css_class("suggested-action");
+        set_wallpaper_button.add_css_class("pill");
         set_wallpaper_button.set_tooltip_text(Some("Set as desktop wallpaper (Ctrl+Shift+W)"));
 
         let button_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
@@ -717,6 +720,16 @@ impl WallrusWindow {
         button_box.append(&export_button);
         button_box.append(&set_wallpaper_button);
 
+        // --- Randomize button (next to export buttons) ---
+        let randomize_button = gtk4::Button::new();
+        randomize_button.add_css_class("pill");
+        randomize_button.set_tooltip_text(Some("Randomize all parameters"));
+        let randomize_content = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+        randomize_content.append(&gtk4::Image::from_icon_name("view-refresh-symbolic"));
+        randomize_content.append(&gtk4::Label::new(Some("Randomize")));
+        randomize_button.set_child(Some(&randomize_content));
+        button_box.append(&randomize_button);
+
         let export_group = adw::PreferencesGroup::new();
         export_group.set_title("Export");
         export_group.add(&resolution_row);
@@ -725,15 +738,16 @@ impl WallrusWindow {
         // Layout — two columns: controls (left), preview + export (right)
         // =====================================================================
 
-        // Left column: palette + shader controls (scrollable)
+        // Left column: pattern + effects + lighting controls (scrollable)
         let left_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         left_box.set_margin_start(12);
         left_box.set_margin_end(6);
         left_box.set_margin_top(0);
         left_box.set_margin_bottom(12);
-        left_box.append(&palette_group);
         left_box.append(&controls_group);
         left_box.append(&distortion_group);
+        left_box.append(&effects_group);
+        left_box.append(&lighting_group);
 
         let left_scroll = gtk4::ScrolledWindow::new();
         left_scroll.set_child(Some(&left_box));
@@ -742,7 +756,7 @@ impl WallrusWindow {
         left_scroll.set_propagate_natural_height(true);
         left_scroll.set_min_content_width(320);
 
-        // Right column: preview + export
+        // Right column: preview + palette + export
         let right_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         right_box.set_margin_start(6);
         right_box.set_margin_end(12);
@@ -750,8 +764,7 @@ impl WallrusWindow {
         right_box.set_margin_bottom(12);
         right_box.set_hexpand(true);
         right_box.append(&preview_group);
-        right_box.append(&effects_group);
-        right_box.append(&lighting_group);
+        right_box.append(&palette_group);
         right_box.append(&export_group);
         right_box.append(&button_box);
 
@@ -1288,6 +1301,166 @@ impl WallrusWindow {
                 let resolution = ExportResolution::from_index(combo.selected(), display_dims);
                 let (w, h) = resolution.dimensions();
                 aspect_frame.set_ratio(w as f32 / h as f32);
+            });
+        }
+
+        // =====================================================================
+        // Randomize button handler
+        // =====================================================================
+
+        {
+            let state = state.clone();
+            let all_categories = all_categories.clone();
+            let category_names = category_names.clone();
+            let category_row = category_row.clone();
+            let palette_paths = palette_paths.clone();
+            let color_buttons_clone: Vec<gtk4::ColorDialogButton> = color_buttons.clone();
+            let preset_row = preset_row.clone();
+            let angle_scale = angle_scale.clone();
+            let scale_scale = scale_scale.clone();
+            let speed_scale = speed_scale.clone();
+            let blend_scale = blend_scale.clone();
+            let center_scale = center_scale.clone();
+            let distort_row = distort_row.clone();
+            let distort_strength_scale = distort_strength_scale.clone();
+            let ripple_freq_scale = ripple_freq_scale.clone();
+            let noise_scale = noise_scale.clone();
+            let dither_switch = dither_switch.clone();
+            let lighting_row = lighting_row.clone();
+            let light_strength_scale = light_strength_scale.clone();
+            let bevel_width_scale = bevel_width_scale.clone();
+            let light_angle_scale = light_angle_scale.clone();
+            randomize_button.connect_clicked(move |_btn| {
+                let mut rng = rand::thread_rng();
+
+                // --- Random preset ---
+                let names = shader_presets::preset_names();
+                let preset_idx = rng.gen_range(0..names.len());
+                // Setting the selected index triggers the connect_selected_notify
+                // callback which loads the preset, updates control visibility, and
+                // resets scale/speed ranges.
+                preset_row.set_selected(preset_idx as u32);
+
+                // Read back the controls config for the chosen preset so we know
+                // the valid ranges for scale/speed sliders (they were just reset
+                // by the preset change handler above).
+                let controls = shader_presets::controls_for(names[preset_idx]);
+
+                // --- Random palette ---
+                // Collect every palette image path across all categories
+                let cats = all_categories.borrow();
+                let mut all_paths: Vec<(usize, usize, PathBuf)> = Vec::new(); // (cat_idx, img_idx, path)
+                let cat_names_list = category_names.borrow();
+                for (cat_idx, cat_name) in cat_names_list.iter().enumerate() {
+                    if let Some(images) = cats.get(cat_name) {
+                        for (img_idx, path) in images.iter().enumerate() {
+                            all_paths.push((cat_idx, img_idx, path.clone()));
+                        }
+                    }
+                }
+                drop(cats);
+
+                if !all_paths.is_empty() {
+                    let choice = rng.gen_range(0..all_paths.len());
+                    let (cat_idx, _img_idx, ref path) = all_paths[choice];
+
+                    // Switch to the category containing this palette (this
+                    // triggers the category change handler which repopulates
+                    // the flowbox and updates palette_paths).
+                    category_row.set_selected(cat_idx as u32);
+
+                    // Now find the index of the chosen path in the current
+                    // palette_paths (which was just repopulated above).
+                    let current_paths = palette_paths.borrow();
+                    let flowbox_idx = current_paths.iter().position(|p| p == path);
+                    drop(current_paths);
+
+                    // Apply the palette colors directly (rather than trying to
+                    // programmatically activate a FlowBox child, which can be
+                    // fragile).
+                    if let Ok(colors) = palette::extract_colors_from_image(path) {
+                        if let Some(ref mut renderer) = *state.borrow_mut() {
+                            renderer.color1 = colors[0];
+                            renderer.color2 = colors[1];
+                            renderer.color3 = colors[2];
+                            renderer.color4 = colors[3];
+                        }
+                        for (i, btn) in color_buttons_clone.iter().enumerate() {
+                            btn.set_rgba(&gdk::RGBA::new(
+                                colors[i][0], colors[i][1], colors[i][2], 1.0,
+                            ));
+                        }
+                    }
+
+                    // Select the matching child in the flowbox for visual feedback
+                    let _ = flowbox_idx; // used above for palette feedback
+                }
+                drop(cat_names_list);
+
+                // --- Randomize shader parameters ---
+                // Angle (0-360 degrees)
+                let rand_angle: f64 = rng.gen_range(0.0..360.0);
+                angle_scale.set_value(rand_angle);
+
+                // Scale (use the preset-specific range)
+                let (smin, smax, _, _) = controls.scale_range;
+                let rand_scale: f64 = rng.gen_range(smin..smax);
+                scale_scale.set_value(rand_scale);
+
+                // Speed/Time (use the preset-specific range)
+                let (spmin, spmax, _, _) = controls.speed_range;
+                let rand_speed: f64 = rng.gen_range(spmin..spmax);
+                speed_scale.set_value(rand_speed);
+
+                // Blend (0.0-1.0)
+                let rand_blend: f64 = rng.gen_range(0.0..1.0);
+                blend_scale.set_value(rand_blend);
+
+                // Center (-1.0 to 1.0)
+                let rand_center: f64 = rng.gen_range(-1.0..1.0);
+                center_scale.set_value(rand_center);
+
+                // --- Distortion ---
+                // Pick a random distortion type (0=None, 1=Swirl, 2=Ripple)
+                let rand_distort: u32 = rng.gen_range(0..3);
+                distort_row.set_selected(rand_distort);
+                // The distort_row handler takes care of visibility, but we
+                // need to set strength/freq values after the type is set.
+                if rand_distort != 0 {
+                    let rand_distort_str: f64 = rng.gen_range(-10.0..10.0);
+                    distort_strength_scale.set_value(rand_distort_str);
+                }
+                if rand_distort == 2 {
+                    let rand_ripple: f64 = rng.gen_range(1.0..30.0);
+                    ripple_freq_scale.set_value(rand_ripple);
+                }
+
+                // --- Effects ---
+                // Noise (-0.2 to 0.2)
+                let rand_noise: f64 = rng.gen_range(-0.2..0.2);
+                noise_scale.set_value(rand_noise);
+
+                // Dither (coin flip)
+                let rand_dither: bool = rng.gen_bool(0.5);
+                dither_switch.set_active(rand_dither);
+
+                // --- Lighting ---
+                // Pick a random lighting type (0=None, 1=Bevel, 2=Gradient, 3=Vignette)
+                let rand_lighting: u32 = rng.gen_range(0..4);
+                lighting_row.set_selected(rand_lighting);
+                // The lighting_row handler manages visibility; set sub-values.
+                if rand_lighting != 0 {
+                    let rand_light_str: f64 = rng.gen_range(0.0..1.0);
+                    light_strength_scale.set_value(rand_light_str);
+                }
+                if rand_lighting == 1 {
+                    let rand_bevel_w: f64 = rng.gen_range(0.01..0.15);
+                    bevel_width_scale.set_value(rand_bevel_w);
+                }
+                if rand_lighting == 2 {
+                    let rand_light_angle: f64 = rng.gen_range(0.0..360.0);
+                    light_angle_scale.set_value(rand_light_angle);
+                }
             });
         }
 

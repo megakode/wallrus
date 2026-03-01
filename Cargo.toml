@@ -13,6 +13,7 @@ glow = "0.14"
 image = "0.25"
 libc = "0.2"
 ashpd = "0.9"
+rand = "0.8"
 
 [profile.release]
 opt-level = 3
