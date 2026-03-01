@@ -295,6 +295,12 @@ impl WallrusWindow {
         save_palette_button.set_tooltip_text(Some("Save as custom palette"));
         color_box.append(&save_palette_button);
 
+        let flip_palette_button = gtk4::Button::from_icon_name("object-flip-horizontal-symbolic");
+        flip_palette_button.add_css_class("flat");
+        flip_palette_button.add_css_class("circular");
+        flip_palette_button.set_tooltip_text(Some("Reverse palette order"));
+        color_box.append(&flip_palette_button);
+
         let color_picker_row = gtk4::ListBoxRow::new();
         color_picker_row.set_child(Some(&color_box));
         color_picker_row.set_activatable(false);
@@ -953,6 +959,22 @@ impl WallrusWindow {
                         show_toast(&window_ref, &format!("Failed to save palette: {}", e));
                     }
                 }
+            });
+        }
+
+        // --- Flip palette button handler ---
+        {
+            let color_btns = color_buttons.clone();
+            flip_palette_button.connect_clicked(move |_| {
+                let rgba0 = color_btns[0].rgba();
+                let rgba1 = color_btns[1].rgba();
+                let rgba2 = color_btns[2].rgba();
+                let rgba3 = color_btns[3].rgba();
+                // Reverse: 0<->3, 1<->2
+                color_btns[0].set_rgba(&rgba3);
+                color_btns[1].set_rgba(&rgba2);
+                color_btns[2].set_rgba(&rgba1);
+                color_btns[3].set_rgba(&rgba0);
             });
         }
 
