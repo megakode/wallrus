@@ -428,7 +428,7 @@ impl WallrusWindow {
         // =====================================================================
 
         // --- Distortion type dropdown ---
-        let distort_list = gtk4::StringList::new(&["None", "Swirl", "Ripple"]);
+        let distort_list = gtk4::StringList::new(&["None", "Swirl", "Fish Eye"]);
         let distort_row = adw::ComboRow::new();
         distort_row.set_title("Type");
         distort_row.set_model(Some(&distort_list));
@@ -473,41 +473,6 @@ impl WallrusWindow {
         distort_strength_hint_row.set_activatable(false);
         distort_strength_hint_row.set_selectable(false);
         distort_strength_hint_row.set_visible(false); // hidden when "None"
-
-        // --- Ripple frequency slider ---
-        let ripple_freq_scale =
-            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.1, 5.0, 0.1);
-        ripple_freq_scale.set_value(2.5);
-        ripple_freq_scale.set_hexpand(true);
-        ripple_freq_scale.set_draw_value(true);
-        ripple_freq_scale.set_value_pos(gtk4::PositionType::Right);
-
-        let ripple_freq_row = adw::ActionRow::builder().title("Frequency").build();
-        ripple_freq_row.add_suffix(&ripple_freq_scale);
-        ripple_freq_row.set_visible(false); // hidden unless "Ripple"
-
-        // Hint labels below the frequency slider
-        let ripple_freq_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-        let sparse_label = gtk4::Label::new(Some("sparse"));
-        sparse_label.add_css_class("dim-label");
-        sparse_label.add_css_class("caption");
-        sparse_label.set_halign(gtk4::Align::Start);
-        sparse_label.set_hexpand(true);
-        let dense_label = gtk4::Label::new(Some("dense"));
-        dense_label.add_css_class("dim-label");
-        dense_label.add_css_class("caption");
-        dense_label.set_halign(gtk4::Align::End);
-        ripple_freq_hints.append(&sparse_label);
-        ripple_freq_hints.append(&dense_label);
-        ripple_freq_hints.set_margin_start(12);
-        ripple_freq_hints.set_margin_end(12);
-        ripple_freq_hints.set_margin_bottom(4);
-
-        let ripple_freq_hint_row = gtk4::ListBoxRow::new();
-        ripple_freq_hint_row.set_child(Some(&ripple_freq_hints));
-        ripple_freq_hint_row.set_activatable(false);
-        ripple_freq_hint_row.set_selectable(false);
-        ripple_freq_hint_row.set_visible(false); // hidden unless "Ripple"
 
         // --- Noise slider ---
         let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -1.0, 1.0, 0.01);
@@ -561,8 +526,6 @@ impl WallrusWindow {
         distortion_group.add(&distort_row);
         distortion_group.add(&distort_strength_row);
         distortion_group.add(&distort_strength_hint_row);
-        distortion_group.add(&ripple_freq_row);
-        distortion_group.add(&ripple_freq_hint_row);
 
         let effects_group = adw::PreferencesGroup::new();
         effects_group.set_title("Effects");
@@ -1431,11 +1394,9 @@ impl WallrusWindow {
             let distort_strength_row = distort_strength_row.clone();
             let distort_strength_scale = distort_strength_scale.clone();
             let distort_strength_hint_row = distort_strength_hint_row.clone();
-            let ripple_freq_row = ripple_freq_row.clone();
-            let ripple_freq_hint_row = ripple_freq_hint_row.clone();
             distort_row.connect_selected_notify(move |combo| {
                 let idx = combo.selected();
-                let distort_type = idx as i32; // 0=None, 1=Swirl, 2=Ripple
+                let distort_type = idx as i32; // 0=None, 1=Swirl, 2=Fish Eye
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.distort_type = distort_type;
                     if distort_type == 0 {
@@ -1448,8 +1409,6 @@ impl WallrusWindow {
                     distort_strength_scale.set_value(0.0);
                 }
                 distort_strength_hint_row.set_visible(distort_type == 1); // Swirl only
-                ripple_freq_row.set_visible(distort_type == 2); // Ripple only
-                ripple_freq_hint_row.set_visible(distort_type == 2);
             });
         }
 
@@ -1468,16 +1427,6 @@ impl WallrusWindow {
             let distort_strength_scale = distort_strength_scale.clone();
             distort_strength_reset.connect_clicked(move |_| {
                 distort_strength_scale.set_value(0.0);
-            });
-        }
-
-        // --- Ripple frequency change ---
-        {
-            let state = state.clone();
-            ripple_freq_scale.connect_value_changed(move |scale| {
-                if let Some(ref mut renderer) = *state.borrow_mut() {
-                    renderer.ripple_freq = scale.value() as f32;
-                }
             });
         }
 
@@ -1752,7 +1701,6 @@ impl WallrusWindow {
             let center_scale = center_scale.clone();
             let distort_row = distort_row.clone();
             let distort_strength_scale = distort_strength_scale.clone();
-            let ripple_freq_scale = ripple_freq_scale.clone();
             let noise_scale = noise_scale.clone();
             let dither_switch = dither_switch.clone();
             let lighting_switch = lighting_switch.clone();
@@ -1860,18 +1808,14 @@ impl WallrusWindow {
                 center_scale.set_value(rand_center);
 
                 // --- Distortion ---
-                // Pick a random distortion type (0=None, 1=Swirl, 2=Ripple)
+                // Pick a random distortion type (0=None, 1=Swirl, 2=Fish Eye)
                 let rand_distort: u32 = rng.gen_range(0..3);
                 distort_row.set_selected(rand_distort);
                 // The distort_row handler takes care of visibility, but we
-                // need to set strength/freq values after the type is set.
+                // need to set strength values after the type is set.
                 if rand_distort != 0 {
                     let rand_distort_str: f64 = rng.gen_range(-10.0..10.0);
                     distort_strength_scale.set_value(rand_distort_str);
-                }
-                if rand_distort == 2 {
-                    let rand_ripple: f64 = rng.gen_range(0.1..5.0);
-                    ripple_freq_scale.set_value(rand_ripple);
                 }
 
                 // --- Effects ---

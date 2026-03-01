@@ -6,7 +6,6 @@ uniform vec3 uColor4;
 uniform float uBlend;
 uniform int uDistortType;
 uniform float uDistortStrength;
-uniform float uRippleFreq;
 uniform int uLightingType;
 uniform float uLightStrength;
 uniform float uBevelWidth;
@@ -23,16 +22,20 @@ vec2 swirlUV(vec2 uv) {
     return vec2(ca * c.x - sa * c.y, sa * c.x + ca * c.y) + 0.5;
 }
 
-vec2 rippleUV(vec2 uv) {
-    float amp = uDistortStrength * 0.005;
-    uv.x += sin(uv.y * uRippleFreq * 6.28318) * amp;
-    uv.y += sin(uv.x * uRippleFreq * 6.28318) * amp;
-    return uv;
+vec2 fisheyeUV(vec2 uv) {
+    vec2 c = uv - 0.5;
+    float r = length(c);
+    float power = 1.0 + uDistortStrength * 0.2;
+    float bind = 0.5;
+    // Barrel/pincushion distortion
+    float nr = pow(r / bind, power) * bind;
+    vec2 offset = (r > 0.0) ? c * (nr / r) : vec2(0.0);
+    return offset + 0.5;
 }
 
 vec2 distortUV(vec2 uv) {
     if (uDistortType == 1) return swirlUV(uv);
-    if (uDistortType == 2) return rippleUV(uv);
+    if (uDistortType == 2) return fisheyeUV(uv);
     return uv;
 }
 

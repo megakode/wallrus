@@ -78,7 +78,6 @@ pub struct RendererState {
     pub blend: f32,
     pub distort_type: i32,
     pub distort_strength: f32,
-    pub ripple_freq: f32,
     pub noise: f32,
     pub center: f32,
     pub dither: f32,
@@ -229,7 +228,6 @@ impl RendererState {
             blend: 0.5,
             distort_type: 0,
             distort_strength: 0.0,
-            ripple_freq: 2.5,
             noise: 0.0,
             center: 0.0,
             dither: 0.0,
@@ -356,9 +354,6 @@ impl RendererState {
                 }
                 if let Some(loc) = gl.get_uniform_location(program.id, "uDistortStrength") {
                     gl.uniform_1_f32(Some(&loc), self.distort_strength);
-                }
-                if let Some(loc) = gl.get_uniform_location(program.id, "uRippleFreq") {
-                    gl.uniform_1_f32(Some(&loc), self.ripple_freq);
                 }
                 if let Some(loc) = gl.get_uniform_location(program.id, "uNoise") {
                     gl.uniform_1_f32(Some(&loc), self.noise);
