@@ -87,8 +87,92 @@ pub struct RendererState {
     pub light_strength: f32,
     pub bevel_width: f32,
     pub light_angle: f32,
+    // Shader uniforms — blur post-processing
+    pub blur_type: i32,
+    pub blur_strength: f32,
+    pub blur_angle: f32,
+    // Shader uniforms — bloom/glow post-processing
+    pub bloom_threshold: f32,
+    pub bloom_intensity: f32,
+    pub bloom_enabled: bool,
+    // Shader uniforms — chromatic aberration post-processing
+    pub chromatic_strength: f32,
+    pub chromatic_angle: f32,
+    pub chromatic_enabled: bool,
+    // Post-processing shader programs
+    blur_program: Option<ShaderProgram>,
+    bloom_program: Option<ShaderProgram>,
+    chromatic_program: Option<ShaderProgram>,
+    // Ping-pong FBO pair for multi-pass post-processing
+    pp_fbos: [glow::Framebuffer; 2],
+    pp_textures: [glow::Texture; 2],
+    pp_fbo_size: (i32, i32),
     // Current preset name
     pub current_preset: String,
+}
+
+/// Helper to create an FBO + texture pair for post-processing
+unsafe fn create_pp_fbo_texture(gl: &glow::Context) -> (glow::Framebuffer, glow::Texture) {
+    let fbo = gl.create_framebuffer().expect("Failed to create PP FBO");
+    let tex = gl.create_texture().expect("Failed to create PP texture");
+
+    gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+    gl.tex_image_2d(
+        glow::TEXTURE_2D,
+        0,
+        glow::RGBA as i32,
+        1,
+        1,
+        0,
+        glow::RGBA,
+        glow::UNSIGNED_BYTE,
+        None,
+    );
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_MIN_FILTER,
+        glow::LINEAR as i32,
+    );
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_MAG_FILTER,
+        glow::LINEAR as i32,
+    );
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_WRAP_S,
+        glow::CLAMP_TO_EDGE as i32,
+    );
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_WRAP_T,
+        glow::CLAMP_TO_EDGE as i32,
+    );
+    gl.bind_texture(glow::TEXTURE_2D, None);
+
+    gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+    gl.framebuffer_texture_2d(
+        glow::FRAMEBUFFER,
+        glow::COLOR_ATTACHMENT0,
+        glow::TEXTURE_2D,
+        Some(tex),
+        0,
+    );
+    gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+
+    (fbo, tex)
+}
+
+/// Compile a post-processing shader program, returning None on failure
+fn compile_pp_shader(gl: &glow::Context, name: &str, source: &str) -> Option<ShaderProgram> {
+    let vertex_src = shader_presets::vertex_shader_source();
+    match ShaderProgram::new(gl, &vertex_src, source) {
+        Ok(p) => Some(p),
+        Err(e) => {
+            eprintln!("Failed to compile {} shader: {}", name, e);
+            None
+        }
+    }
 }
 
 impl RendererState {
@@ -115,6 +199,20 @@ impl RendererState {
             (vao, vbo)
         };
 
+        // Create ping-pong FBO pair
+        let (fbo_a, tex_a) = unsafe { create_pp_fbo_texture(&gl) };
+        let (fbo_b, tex_b) = unsafe { create_pp_fbo_texture(&gl) };
+
+        // Compile all post-processing shaders
+        let blur_program = compile_pp_shader(&gl, "blur", &shader_presets::blur_fragment_source());
+        let bloom_program =
+            compile_pp_shader(&gl, "bloom", &shader_presets::bloom_fragment_source());
+        let chromatic_program = compile_pp_shader(
+            &gl,
+            "chromatic",
+            &shader_presets::chromatic_fragment_source(),
+        );
+
         Self {
             gl,
             program: None,
@@ -131,7 +229,7 @@ impl RendererState {
             blend: 0.5,
             distort_type: 0,
             distort_strength: 0.0,
-            ripple_freq: 15.0,
+            ripple_freq: 2.5,
             noise: 0.0,
             center: 0.0,
             dither: 0.0,
@@ -139,6 +237,21 @@ impl RendererState {
             light_strength: 0.0,
             bevel_width: 0.05,
             light_angle: (45.0_f32 - 90.0).to_radians(),
+            blur_type: 0,
+            blur_strength: 0.5,
+            blur_angle: 0.0,
+            bloom_threshold: 0.5,
+            bloom_intensity: 1.0,
+            bloom_enabled: false,
+            chromatic_strength: 0.0,
+            chromatic_angle: 0.0,
+            chromatic_enabled: false,
+            blur_program,
+            bloom_program,
+            chromatic_program,
+            pp_fbos: [fbo_a, fbo_b],
+            pp_textures: [tex_a, tex_b],
+            pp_fbo_size: (1, 1),
             current_preset: String::from("Bars"),
         }
     }
@@ -164,7 +277,38 @@ impl RendererState {
         Ok(())
     }
 
-    pub fn render(&self, width: i32, height: i32) {
+    /// Ensure both ping-pong FBO textures match the given dimensions.
+    fn ensure_pp_fbo_size(&mut self, width: i32, height: i32) {
+        if self.pp_fbo_size == (width, height) {
+            return;
+        }
+        unsafe {
+            for tex in &self.pp_textures {
+                self.gl.bind_texture(glow::TEXTURE_2D, Some(*tex));
+                self.gl.tex_image_2d(
+                    glow::TEXTURE_2D,
+                    0,
+                    glow::RGBA as i32,
+                    width,
+                    height,
+                    0,
+                    glow::RGBA,
+                    glow::UNSIGNED_BYTE,
+                    None,
+                );
+            }
+            self.gl.bind_texture(glow::TEXTURE_2D, None);
+        }
+        self.pp_fbo_size = (width, height);
+    }
+
+    /// Returns true if any post-processing effect is active.
+    fn has_active_postprocess(&self) -> bool {
+        self.blur_type != 0 || self.bloom_enabled || self.chromatic_enabled
+    }
+
+    /// Render the pattern shader (single pass) into the currently bound FBO.
+    fn render_scene(&self, width: i32, height: i32) {
         let gl = &self.gl;
 
         unsafe {
@@ -247,18 +391,200 @@ impl RendererState {
         }
     }
 
-    /// Render at a specific resolution and return RGBA pixel data
-    pub fn render_to_pixels(&self, width: i32, height: i32) -> Vec<u8> {
+    /// Run a generic post-processing pass: bind `src_texture` to unit 0,
+    /// set `uSceneTexture`, `iResolution`, and call the `setup_uniforms`
+    /// closure to set effect-specific uniforms, then draw a fullscreen quad.
+    fn run_pp_pass(
+        &self,
+        program: &ShaderProgram,
+        src_texture: glow::Texture,
+        width: i32,
+        height: i32,
+        setup_uniforms: impl FnOnce(&glow::Context, glow::Program),
+    ) {
         let gl = &self.gl;
-
         unsafe {
-            let fbo = gl.create_framebuffer().expect("Failed to create FBO");
-            let texture = gl.create_texture().expect("Failed to create texture");
+            gl.viewport(0, 0, width, height);
+            gl.use_program(Some(program.id));
 
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
-            gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+            gl.active_texture(glow::TEXTURE0);
+            gl.bind_texture(glow::TEXTURE_2D, Some(src_texture));
+            if let Some(loc) = gl.get_uniform_location(program.id, "uSceneTexture") {
+                gl.uniform_1_i32(Some(&loc), 0);
+            }
+            if let Some(loc) = gl.get_uniform_location(program.id, "iResolution") {
+                gl.uniform_3_f32(Some(&loc), width as f32, height as f32, 1.0);
+            }
 
-            gl.tex_image_2d(
+            setup_uniforms(gl, program.id);
+
+            gl.bind_vertex_array(Some(self.vao));
+            gl.draw_arrays(glow::TRIANGLES, 0, 6);
+            gl.bind_vertex_array(None);
+
+            gl.bind_texture(glow::TEXTURE_2D, None);
+            gl.use_program(None);
+        }
+    }
+
+    /// Render the scene with optional multi-pass post-processing into the
+    /// currently bound framebuffer (e.g. GTK's GLArea FBO or export FBO).
+    ///
+    /// Pipeline order: Scene → Blur → Bloom → Chromatic Aberration
+    pub fn render(&mut self, width: i32, height: i32) {
+        if !self.has_active_postprocess() {
+            // No post-processing: render directly (zero overhead).
+            self.render_scene(width, height);
+            return;
+        }
+
+        // Save the currently bound FBO (GTK's internal FBO or export FBO).
+        let saved_fbo = unsafe {
+            let mut fbo_id: i32 = 0;
+            self.gl
+                .get_parameter_i32(glow::FRAMEBUFFER_BINDING)
+                .clone_into(&mut fbo_id);
+            fbo_id
+        };
+
+        self.ensure_pp_fbo_size(width, height);
+
+        // Build the list of active post-processing passes.
+        // Each pass is identified so we know which shader/uniforms to use.
+        #[derive(Clone, Copy)]
+        enum PpPass {
+            Blur,
+            Bloom,
+            Chromatic,
+        }
+
+        let mut passes: Vec<PpPass> = Vec::with_capacity(3);
+        if self.blur_type != 0 && self.blur_program.is_some() {
+            passes.push(PpPass::Blur);
+        }
+        if self.bloom_enabled && self.bloom_program.is_some() {
+            passes.push(PpPass::Bloom);
+        }
+        if self.chromatic_enabled && self.chromatic_program.is_some() {
+            passes.push(PpPass::Chromatic);
+        }
+
+        // Render scene into pp_fbos[0] (texture A).
+        unsafe {
+            self.gl
+                .bind_framebuffer(glow::FRAMEBUFFER, Some(self.pp_fbos[0]));
+        }
+        self.render_scene(width, height);
+
+        // Ping-pong: source starts as texture A (index 0).
+        // Each pass reads from the current source and writes to the other.
+        let mut src_idx: usize = 0; // index into pp_textures for the current source
+
+        let num_passes = passes.len();
+        for (i, pass) in passes.iter().enumerate() {
+            let src_texture = self.pp_textures[src_idx];
+            let dst_idx = 1 - src_idx;
+
+            let is_last = i == num_passes - 1;
+
+            // Last pass writes to the saved FBO (final destination).
+            if is_last {
+                unsafe {
+                    if saved_fbo == 0 {
+                        self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                    } else {
+                        let native = std::num::NonZeroU32::new(saved_fbo as u32).unwrap();
+                        self.gl.bind_framebuffer(
+                            glow::FRAMEBUFFER,
+                            Some(glow::NativeFramebuffer(native)),
+                        );
+                    }
+                }
+            } else {
+                // Intermediate pass writes to the other ping-pong FBO.
+                unsafe {
+                    self.gl
+                        .bind_framebuffer(glow::FRAMEBUFFER, Some(self.pp_fbos[dst_idx]));
+                }
+            }
+
+            match pass {
+                PpPass::Blur => {
+                    let blur_type = self.blur_type;
+                    let blur_strength = self.blur_strength;
+                    let blur_angle = self.blur_angle;
+                    self.run_pp_pass(
+                        self.blur_program.as_ref().unwrap(),
+                        src_texture,
+                        width,
+                        height,
+                        |gl, prog| unsafe {
+                            if let Some(loc) = gl.get_uniform_location(prog, "uBlurType") {
+                                gl.uniform_1_i32(Some(&loc), blur_type);
+                            }
+                            if let Some(loc) = gl.get_uniform_location(prog, "uBlurStrength") {
+                                gl.uniform_1_f32(Some(&loc), blur_strength);
+                            }
+                            if let Some(loc) = gl.get_uniform_location(prog, "uBlurAngle") {
+                                gl.uniform_1_f32(Some(&loc), blur_angle);
+                            }
+                        },
+                    );
+                }
+                PpPass::Bloom => {
+                    let threshold = self.bloom_threshold;
+                    let intensity = self.bloom_intensity;
+                    self.run_pp_pass(
+                        self.bloom_program.as_ref().unwrap(),
+                        src_texture,
+                        width,
+                        height,
+                        |gl, prog| unsafe {
+                            if let Some(loc) = gl.get_uniform_location(prog, "uBloomThreshold") {
+                                gl.uniform_1_f32(Some(&loc), threshold);
+                            }
+                            if let Some(loc) = gl.get_uniform_location(prog, "uBloomIntensity") {
+                                gl.uniform_1_f32(Some(&loc), intensity);
+                            }
+                        },
+                    );
+                }
+                PpPass::Chromatic => {
+                    let strength = self.chromatic_strength;
+                    let angle = self.chromatic_angle;
+                    self.run_pp_pass(
+                        self.chromatic_program.as_ref().unwrap(),
+                        src_texture,
+                        width,
+                        height,
+                        |gl, prog| unsafe {
+                            if let Some(loc) = gl.get_uniform_location(prog, "uChromaticStrength") {
+                                gl.uniform_1_f32(Some(&loc), strength);
+                            }
+                            if let Some(loc) = gl.get_uniform_location(prog, "uChromaticAngle") {
+                                gl.uniform_1_f32(Some(&loc), angle);
+                            }
+                        },
+                    );
+                }
+            }
+
+            // Advance ping-pong index (only matters for intermediate passes).
+            if !is_last {
+                src_idx = dst_idx;
+            }
+        }
+    }
+
+    /// Render at a specific resolution and return RGBA pixel data
+    pub fn render_to_pixels(&mut self, width: i32, height: i32) -> Vec<u8> {
+        let (fbo, texture) = unsafe {
+            let fbo = self.gl.create_framebuffer().expect("Failed to create FBO");
+            let texture = self.gl.create_texture().expect("Failed to create texture");
+
+            self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+
+            self.gl.tex_image_2d(
                 glow::TEXTURE_2D,
                 0,
                 glow::RGBA as i32,
@@ -269,18 +595,20 @@ impl RendererState {
                 glow::UNSIGNED_BYTE,
                 None,
             );
-            gl.tex_parameter_i32(
+            self.gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_MIN_FILTER,
                 glow::LINEAR as i32,
             );
-            gl.tex_parameter_i32(
+            self.gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_MAG_FILTER,
                 glow::LINEAR as i32,
             );
+            self.gl.bind_texture(glow::TEXTURE_2D, None);
 
-            gl.framebuffer_texture_2d(
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+            self.gl.framebuffer_texture_2d(
                 glow::FRAMEBUFFER,
                 glow::COLOR_ATTACHMENT0,
                 glow::TEXTURE_2D,
@@ -288,15 +616,25 @@ impl RendererState {
                 0,
             );
 
-            let status = gl.check_framebuffer_status(glow::FRAMEBUFFER);
+            let status = self.gl.check_framebuffer_status(glow::FRAMEBUFFER);
             if status != glow::FRAMEBUFFER_COMPLETE {
                 eprintln!("Framebuffer not complete: 0x{:X}", status);
             }
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
-            self.render(width, height);
+            (fbo, texture)
+        };
 
+        // Bind the export FBO, then render (with post-processing if active) into it.
+        unsafe {
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+        }
+        self.render(width, height);
+
+        unsafe {
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
             let mut pixels = vec![0u8; (width * height * 4) as usize];
-            gl.read_pixels(
+            self.gl.read_pixels(
                 0,
                 0,
                 width,
@@ -307,9 +645,9 @@ impl RendererState {
             );
 
             // Restore default framebuffer
-            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-            gl.delete_framebuffer(fbo);
-            gl.delete_texture(texture);
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            self.gl.delete_framebuffer(fbo);
+            self.gl.delete_texture(texture);
 
             // Flip vertically (OpenGL origin is bottom-left)
             let row_size = (width * 4) as usize;
@@ -328,10 +666,26 @@ impl RendererState {
 impl Drop for RendererState {
     fn drop(&mut self) {
         unsafe {
-            // Program is cleaned up via ShaderProgram::delete in set_shader,
-            // but handle any remaining program
+            // Clean up main pattern program
             if let Some(program) = self.program.take() {
                 self.gl.delete_program(program.id);
+            }
+            // Clean up post-processing programs
+            if let Some(prog) = self.blur_program.take() {
+                self.gl.delete_program(prog.id);
+            }
+            if let Some(prog) = self.bloom_program.take() {
+                self.gl.delete_program(prog.id);
+            }
+            if let Some(prog) = self.chromatic_program.take() {
+                self.gl.delete_program(prog.id);
+            }
+            // Clean up ping-pong FBOs and textures
+            for fbo in &self.pp_fbos {
+                self.gl.delete_framebuffer(*fbo);
+            }
+            for tex in &self.pp_textures {
+                self.gl.delete_texture(*tex);
             }
             self.gl.delete_vertex_array(self.vao);
             self.gl.delete_buffer(self.vbo);
@@ -392,7 +746,7 @@ pub fn create_gl_area(state: SharedRendererState) -> GLArea {
         let width = area.width() * scale;
         let height = area.height() * scale;
 
-        if let Some(ref renderer) = *state_render.borrow() {
+        if let Some(ref mut renderer) = *state_render.borrow_mut() {
             renderer.render(width, height);
         }
 

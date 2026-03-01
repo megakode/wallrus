@@ -476,8 +476,8 @@ impl WallrusWindow {
 
         // --- Ripple frequency slider ---
         let ripple_freq_scale =
-            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 1.0, 30.0, 0.5);
-        ripple_freq_scale.set_value(15.0);
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.1, 5.0, 0.1);
+        ripple_freq_scale.set_value(2.5);
         ripple_freq_scale.set_hexpand(true);
         ripple_freq_scale.set_draw_value(true);
         ripple_freq_scale.set_value_pos(gtk4::PositionType::Right);
@@ -574,12 +574,18 @@ impl WallrusWindow {
         // Lighting section
         // =====================================================================
 
+        // --- Lighting enable switch ---
+        let lighting_switch = gtk4::Switch::new();
+        lighting_switch.set_active(false);
+        lighting_switch.set_valign(gtk4::Align::Center);
+
         // --- Lighting type dropdown ---
-        let lighting_list = gtk4::StringList::new(&["None", "Bevel", "Gradient", "Vignette"]);
+        let lighting_list = gtk4::StringList::new(&["Bevel", "Gradient", "Vignette"]);
         let lighting_row = adw::ComboRow::new();
         lighting_row.set_title("Type");
         lighting_row.set_model(Some(&lighting_list));
         lighting_row.set_selected(0);
+        lighting_row.set_visible(false); // hidden until enabled
 
         // --- Lighting strength slider ---
         let light_strength_scale =
@@ -663,14 +669,247 @@ impl WallrusWindow {
         light_angle_row.add_suffix(&light_angle_scale);
         light_angle_row.set_visible(false); // only visible for "Gradient"
 
+        let lighting_enable_row = adw::ActionRow::builder().title("Enable").build();
+        lighting_enable_row.add_suffix(&lighting_switch);
+        lighting_enable_row.set_activatable_widget(Some(&lighting_switch));
+
         let lighting_group = adw::PreferencesGroup::new();
         lighting_group.set_title("Lighting");
+        lighting_group.add(&lighting_enable_row);
         lighting_group.add(&lighting_row);
         lighting_group.add(&light_strength_row);
         lighting_group.add(&light_strength_hint_row);
         lighting_group.add(&bevel_width_row);
         lighting_group.add(&bevel_width_hint_row);
         lighting_group.add(&light_angle_row);
+
+        // =====================================================================
+        // Blur post-processing section
+        // =====================================================================
+
+        // --- Blur type dropdown ---
+        let blur_list = gtk4::StringList::new(&[
+            "None",
+            "Gaussian",
+            "Tilt-Shift",
+            "Radial",
+            "Vignette",
+            "Directional",
+        ]);
+        let blur_type_row = adw::ComboRow::new();
+        blur_type_row.set_title("Type");
+        blur_type_row.set_model(Some(&blur_list));
+        blur_type_row.set_selected(0);
+
+        // --- Blur strength slider ---
+        let blur_strength_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+        blur_strength_scale.set_value(0.5);
+        blur_strength_scale.set_hexpand(true);
+        blur_strength_scale.set_draw_value(true);
+        blur_strength_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let blur_strength_row = adw::ActionRow::builder().title("Strength").build();
+        blur_strength_row.add_suffix(&blur_strength_scale);
+        blur_strength_row.set_visible(false); // hidden when "None"
+
+        // Hint labels below the blur strength slider
+        let blur_strength_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let bs_subtle_label = gtk4::Label::new(Some("subtle"));
+        bs_subtle_label.add_css_class("dim-label");
+        bs_subtle_label.add_css_class("caption");
+        bs_subtle_label.set_halign(gtk4::Align::Start);
+        bs_subtle_label.set_hexpand(true);
+        let bs_strong_label = gtk4::Label::new(Some("strong"));
+        bs_strong_label.add_css_class("dim-label");
+        bs_strong_label.add_css_class("caption");
+        bs_strong_label.set_halign(gtk4::Align::End);
+        blur_strength_hints.append(&bs_subtle_label);
+        blur_strength_hints.append(&bs_strong_label);
+        blur_strength_hints.set_margin_start(12);
+        blur_strength_hints.set_margin_end(12);
+        blur_strength_hints.set_margin_bottom(4);
+
+        let blur_strength_hint_row = gtk4::ListBoxRow::new();
+        blur_strength_hint_row.set_child(Some(&blur_strength_hints));
+        blur_strength_hint_row.set_activatable(false);
+        blur_strength_hint_row.set_selectable(false);
+        blur_strength_hint_row.set_visible(false); // hidden when "None"
+
+        // --- Blur angle slider (for Tilt-Shift and Directional) ---
+        let blur_angle_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 360.0, 1.0);
+        blur_angle_scale.set_value(0.0);
+        blur_angle_scale.set_hexpand(true);
+        blur_angle_scale.set_draw_value(true);
+        blur_angle_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let blur_angle_row = adw::ActionRow::builder().title("Angle").build();
+        blur_angle_row.add_suffix(&blur_angle_scale);
+        blur_angle_row.set_visible(false); // only for Tilt-Shift (2) and Directional (5)
+
+        let blur_group = adw::PreferencesGroup::new();
+        blur_group.set_title("Blur");
+        blur_group.add(&blur_type_row);
+        blur_group.add(&blur_strength_row);
+        blur_group.add(&blur_strength_hint_row);
+        blur_group.add(&blur_angle_row);
+
+        // =====================================================================
+        // Bloom/Glow post-processing section
+        // =====================================================================
+
+        // --- Bloom enable switch ---
+        let bloom_switch = gtk4::Switch::new();
+        bloom_switch.set_active(false);
+        bloom_switch.set_valign(gtk4::Align::Center);
+        let bloom_enable_row = adw::ActionRow::builder().title("Enable").build();
+        bloom_enable_row.add_suffix(&bloom_switch);
+        bloom_enable_row.set_activatable_widget(Some(&bloom_switch));
+
+        // --- Bloom threshold slider ---
+        let bloom_threshold_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+        bloom_threshold_scale.set_value(0.5);
+        bloom_threshold_scale.set_hexpand(true);
+        bloom_threshold_scale.set_draw_value(true);
+        bloom_threshold_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let bloom_threshold_row = adw::ActionRow::builder().title("Threshold").build();
+        bloom_threshold_row.add_suffix(&bloom_threshold_scale);
+        bloom_threshold_row.set_visible(false); // hidden when off
+
+        // Hint labels below the threshold slider
+        let bloom_threshold_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let bt_all_label = gtk4::Label::new(Some("all"));
+        bt_all_label.add_css_class("dim-label");
+        bt_all_label.add_css_class("caption");
+        bt_all_label.set_halign(gtk4::Align::Start);
+        bt_all_label.set_hexpand(true);
+        let bt_bright_label = gtk4::Label::new(Some("bright only"));
+        bt_bright_label.add_css_class("dim-label");
+        bt_bright_label.add_css_class("caption");
+        bt_bright_label.set_halign(gtk4::Align::End);
+        bloom_threshold_hints.append(&bt_all_label);
+        bloom_threshold_hints.append(&bt_bright_label);
+        bloom_threshold_hints.set_margin_start(12);
+        bloom_threshold_hints.set_margin_end(12);
+        bloom_threshold_hints.set_margin_bottom(4);
+
+        let bloom_threshold_hint_row = gtk4::ListBoxRow::new();
+        bloom_threshold_hint_row.set_child(Some(&bloom_threshold_hints));
+        bloom_threshold_hint_row.set_activatable(false);
+        bloom_threshold_hint_row.set_selectable(false);
+        bloom_threshold_hint_row.set_visible(false); // hidden when off
+
+        // --- Bloom intensity slider ---
+        let bloom_intensity_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 3.0, 0.1);
+        bloom_intensity_scale.set_value(1.0);
+        bloom_intensity_scale.set_hexpand(true);
+        bloom_intensity_scale.set_draw_value(true);
+        bloom_intensity_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let bloom_intensity_row = adw::ActionRow::builder().title("Intensity").build();
+        bloom_intensity_row.add_suffix(&bloom_intensity_scale);
+        bloom_intensity_row.set_visible(false); // hidden when off
+
+        // Hint labels below the intensity slider
+        let bloom_intensity_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let bi_subtle_label = gtk4::Label::new(Some("subtle"));
+        bi_subtle_label.add_css_class("dim-label");
+        bi_subtle_label.add_css_class("caption");
+        bi_subtle_label.set_halign(gtk4::Align::Start);
+        bi_subtle_label.set_hexpand(true);
+        let bi_strong_label = gtk4::Label::new(Some("strong"));
+        bi_strong_label.add_css_class("dim-label");
+        bi_strong_label.add_css_class("caption");
+        bi_strong_label.set_halign(gtk4::Align::End);
+        bloom_intensity_hints.append(&bi_subtle_label);
+        bloom_intensity_hints.append(&bi_strong_label);
+        bloom_intensity_hints.set_margin_start(12);
+        bloom_intensity_hints.set_margin_end(12);
+        bloom_intensity_hints.set_margin_bottom(4);
+
+        let bloom_intensity_hint_row = gtk4::ListBoxRow::new();
+        bloom_intensity_hint_row.set_child(Some(&bloom_intensity_hints));
+        bloom_intensity_hint_row.set_activatable(false);
+        bloom_intensity_hint_row.set_selectable(false);
+        bloom_intensity_hint_row.set_visible(false); // hidden when off
+
+        let bloom_group = adw::PreferencesGroup::new();
+        bloom_group.set_title("Glow");
+        bloom_group.add(&bloom_enable_row);
+        bloom_group.add(&bloom_threshold_row);
+        bloom_group.add(&bloom_threshold_hint_row);
+        bloom_group.add(&bloom_intensity_row);
+        bloom_group.add(&bloom_intensity_hint_row);
+
+        // =====================================================================
+        // Chromatic Aberration post-processing section
+        // =====================================================================
+
+        // --- Chromatic enable switch ---
+        let chromatic_switch = gtk4::Switch::new();
+        chromatic_switch.set_active(false);
+        chromatic_switch.set_valign(gtk4::Align::Center);
+        let chromatic_enable_row = adw::ActionRow::builder().title("Enable").build();
+        chromatic_enable_row.add_suffix(&chromatic_switch);
+        chromatic_enable_row.set_activatable_widget(Some(&chromatic_switch));
+
+        // --- Chromatic strength slider ---
+        let chromatic_strength_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+        chromatic_strength_scale.set_value(0.5);
+        chromatic_strength_scale.set_hexpand(true);
+        chromatic_strength_scale.set_draw_value(true);
+        chromatic_strength_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let chromatic_strength_row = adw::ActionRow::builder().title("Strength").build();
+        chromatic_strength_row.add_suffix(&chromatic_strength_scale);
+        chromatic_strength_row.set_visible(false); // hidden when off
+
+        // Hint labels below the strength slider
+        let chromatic_strength_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let cs_subtle_label = gtk4::Label::new(Some("subtle"));
+        cs_subtle_label.add_css_class("dim-label");
+        cs_subtle_label.add_css_class("caption");
+        cs_subtle_label.set_halign(gtk4::Align::Start);
+        cs_subtle_label.set_hexpand(true);
+        let cs_strong_label = gtk4::Label::new(Some("strong"));
+        cs_strong_label.add_css_class("dim-label");
+        cs_strong_label.add_css_class("caption");
+        cs_strong_label.set_halign(gtk4::Align::End);
+        chromatic_strength_hints.append(&cs_subtle_label);
+        chromatic_strength_hints.append(&cs_strong_label);
+        chromatic_strength_hints.set_margin_start(12);
+        chromatic_strength_hints.set_margin_end(12);
+        chromatic_strength_hints.set_margin_bottom(4);
+
+        let chromatic_strength_hint_row = gtk4::ListBoxRow::new();
+        chromatic_strength_hint_row.set_child(Some(&chromatic_strength_hints));
+        chromatic_strength_hint_row.set_activatable(false);
+        chromatic_strength_hint_row.set_selectable(false);
+        chromatic_strength_hint_row.set_visible(false); // hidden when off
+
+        // --- Chromatic angle slider ---
+        let chromatic_angle_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 360.0, 1.0);
+        chromatic_angle_scale.set_value(0.0);
+        chromatic_angle_scale.set_hexpand(true);
+        chromatic_angle_scale.set_draw_value(true);
+        chromatic_angle_scale.set_value_pos(gtk4::PositionType::Right);
+
+        let chromatic_angle_row = adw::ActionRow::builder().title("Angle").build();
+        chromatic_angle_row.add_suffix(&chromatic_angle_scale);
+        chromatic_angle_row.set_visible(false); // hidden when off
+
+        let chromatic_group = adw::PreferencesGroup::new();
+        chromatic_group.set_title("Chromatic Aberration");
+        chromatic_group.add(&chromatic_enable_row);
+        chromatic_group.add(&chromatic_strength_row);
+        chromatic_group.add(&chromatic_strength_hint_row);
+        chromatic_group.add(&chromatic_angle_row);
 
         // =====================================================================
         // Export section
@@ -761,6 +1000,9 @@ impl WallrusWindow {
         left_box.append(&distortion_group);
         left_box.append(&effects_group);
         left_box.append(&lighting_group);
+        left_box.append(&blur_group);
+        left_box.append(&bloom_group);
+        left_box.append(&chromatic_group);
 
         let left_scroll = gtk4::ScrolledWindow::new();
         left_scroll.set_child(Some(&left_box));
@@ -1267,6 +1509,45 @@ impl WallrusWindow {
             });
         }
 
+        // --- Lighting enable change ---
+        {
+            let state = state.clone();
+            let lighting_row = lighting_row.clone();
+            let light_strength_row = light_strength_row.clone();
+            let light_strength_hint_row = light_strength_hint_row.clone();
+            let bevel_width_row = bevel_width_row.clone();
+            let bevel_width_hint_row = bevel_width_hint_row.clone();
+            let light_angle_row = light_angle_row.clone();
+            lighting_switch.connect_active_notify(move |switch| {
+                let active = switch.is_active();
+                if active {
+                    // Show dropdown; sub-row visibility driven by dropdown handler
+                    lighting_row.set_visible(true);
+                    let idx = lighting_row.selected() as i32; // 0=Bevel, 1=Gradient, 2=Vignette
+                    let renderer_idx = idx + 1; // renderer: 1=Bevel, 2=Gradient, 3=Vignette
+                    if let Some(ref mut renderer) = *state.borrow_mut() {
+                        renderer.lighting_type = renderer_idx;
+                    }
+                    light_strength_row.set_visible(true);
+                    light_strength_hint_row.set_visible(true);
+                    bevel_width_row.set_visible(renderer_idx == 1);
+                    bevel_width_hint_row.set_visible(renderer_idx == 1);
+                    light_angle_row.set_visible(renderer_idx == 2);
+                } else {
+                    // Hide everything
+                    lighting_row.set_visible(false);
+                    light_strength_row.set_visible(false);
+                    light_strength_hint_row.set_visible(false);
+                    bevel_width_row.set_visible(false);
+                    bevel_width_hint_row.set_visible(false);
+                    light_angle_row.set_visible(false);
+                    if let Some(ref mut renderer) = *state.borrow_mut() {
+                        renderer.lighting_type = 0;
+                    }
+                }
+            });
+        }
+
         // --- Lighting type change ---
         {
             let state = state.clone();
@@ -1276,14 +1557,12 @@ impl WallrusWindow {
             let bevel_width_hint_row = bevel_width_hint_row.clone();
             let light_angle_row = light_angle_row.clone();
             lighting_row.connect_selected_notify(move |combo| {
-                let idx = combo.selected() as i32; // 0=None, 1=Bevel, 2=Gradient, 3=Vignette
+                let idx = combo.selected() as i32 + 1; // renderer: 1=Bevel, 2=Gradient, 3=Vignette
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.lighting_type = idx;
                 }
-                // Visibility logic per the specification table
-                let show_strength = idx != 0;
-                light_strength_row.set_visible(show_strength);
-                light_strength_hint_row.set_visible(show_strength);
+                light_strength_row.set_visible(true);
+                light_strength_hint_row.set_visible(true);
                 bevel_width_row.set_visible(idx == 1);
                 bevel_width_hint_row.set_visible(idx == 1);
                 light_angle_row.set_visible(idx == 2);
@@ -1323,6 +1602,124 @@ impl WallrusWindow {
             });
         }
 
+        // --- Blur type change ---
+        {
+            let state = state.clone();
+            let blur_strength_row = blur_strength_row.clone();
+            let blur_strength_hint_row = blur_strength_hint_row.clone();
+            let blur_angle_row = blur_angle_row.clone();
+            blur_type_row.connect_selected_notify(move |combo| {
+                let idx = combo.selected() as i32;
+                // 0=None, 1=Gaussian, 2=Tilt-Shift, 3=Radial, 4=Vignette, 5=Directional
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.blur_type = idx;
+                }
+                let show = idx != 0;
+                blur_strength_row.set_visible(show);
+                blur_strength_hint_row.set_visible(show);
+                // Angle: Tilt-Shift (2) or Directional (5)
+                blur_angle_row.set_visible(idx == 2 || idx == 5);
+            });
+        }
+
+        // --- Blur strength change ---
+        {
+            let state = state.clone();
+            blur_strength_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.blur_strength = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Blur angle change ---
+        {
+            let state = state.clone();
+            blur_angle_scale.connect_value_changed(move |scale| {
+                let radians = (scale.value() as f32).to_radians();
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.blur_angle = radians;
+                }
+            });
+        }
+
+        // --- Bloom enable change ---
+        {
+            let state = state.clone();
+            let bloom_threshold_row = bloom_threshold_row.clone();
+            let bloom_threshold_hint_row = bloom_threshold_hint_row.clone();
+            let bloom_intensity_row = bloom_intensity_row.clone();
+            let bloom_intensity_hint_row = bloom_intensity_hint_row.clone();
+            bloom_switch.connect_active_notify(move |switch| {
+                let active = switch.is_active();
+                bloom_threshold_row.set_visible(active);
+                bloom_threshold_hint_row.set_visible(active);
+                bloom_intensity_row.set_visible(active);
+                bloom_intensity_hint_row.set_visible(active);
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.bloom_enabled = active;
+                }
+            });
+        }
+
+        // --- Bloom threshold change ---
+        {
+            let state = state.clone();
+            bloom_threshold_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.bloom_threshold = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Bloom intensity change ---
+        {
+            let state = state.clone();
+            bloom_intensity_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.bloom_intensity = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Chromatic enable change ---
+        {
+            let state = state.clone();
+            let chromatic_strength_row = chromatic_strength_row.clone();
+            let chromatic_strength_hint_row = chromatic_strength_hint_row.clone();
+            let chromatic_angle_row = chromatic_angle_row.clone();
+            chromatic_switch.connect_active_notify(move |switch| {
+                let active = switch.is_active();
+                chromatic_strength_row.set_visible(active);
+                chromatic_strength_hint_row.set_visible(active);
+                chromatic_angle_row.set_visible(active);
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.chromatic_enabled = active;
+                }
+            });
+        }
+
+        // --- Chromatic strength change ---
+        {
+            let state = state.clone();
+            chromatic_strength_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.chromatic_strength = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Chromatic angle change ---
+        {
+            let state = state.clone();
+            chromatic_angle_scale.connect_value_changed(move |scale| {
+                let radians = (scale.value() as f32).to_radians();
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.chromatic_angle = radians;
+                }
+            });
+        }
+
         // =====================================================================
         // Resolution change — update preview aspect ratio
         // =====================================================================
@@ -1358,10 +1755,20 @@ impl WallrusWindow {
             let ripple_freq_scale = ripple_freq_scale.clone();
             let noise_scale = noise_scale.clone();
             let dither_switch = dither_switch.clone();
+            let lighting_switch = lighting_switch.clone();
             let lighting_row = lighting_row.clone();
             let light_strength_scale = light_strength_scale.clone();
             let bevel_width_scale = bevel_width_scale.clone();
             let light_angle_scale = light_angle_scale.clone();
+            let blur_type_row = blur_type_row.clone();
+            let blur_strength_scale = blur_strength_scale.clone();
+            let blur_angle_scale = blur_angle_scale.clone();
+            let bloom_switch = bloom_switch.clone();
+            let bloom_threshold_scale = bloom_threshold_scale.clone();
+            let bloom_intensity_scale = bloom_intensity_scale.clone();
+            let chromatic_switch = chromatic_switch.clone();
+            let chromatic_strength_scale = chromatic_strength_scale.clone();
+            let chromatic_angle_scale = chromatic_angle_scale.clone();
             randomize_button.connect_clicked(move |_btn| {
                 let mut rng = rand::thread_rng();
 
@@ -1463,7 +1870,7 @@ impl WallrusWindow {
                     distort_strength_scale.set_value(rand_distort_str);
                 }
                 if rand_distort == 2 {
-                    let rand_ripple: f64 = rng.gen_range(1.0..30.0);
+                    let rand_ripple: f64 = rng.gen_range(0.1..5.0);
                     ripple_freq_scale.set_value(rand_ripple);
                 }
 
@@ -1477,21 +1884,57 @@ impl WallrusWindow {
                 dither_switch.set_active(rand_dither);
 
                 // --- Lighting ---
-                // Pick a random lighting type (0=None, 1=Bevel, 2=Gradient, 3=Vignette)
-                let rand_lighting: u32 = rng.gen_range(0..4);
-                lighting_row.set_selected(rand_lighting);
-                // The lighting_row handler manages visibility; set sub-values.
-                if rand_lighting != 0 {
+                let rand_lighting_on: bool = rng.gen_bool(0.5);
+                lighting_switch.set_active(rand_lighting_on);
+                if rand_lighting_on {
+                    // Pick a random lighting type (0=Bevel, 1=Gradient, 2=Vignette)
+                    let rand_lighting: u32 = rng.gen_range(0..3);
+                    lighting_row.set_selected(rand_lighting);
                     let rand_light_str: f64 = rng.gen_range(0.0..1.0);
                     light_strength_scale.set_value(rand_light_str);
+                    if rand_lighting == 0 {
+                        let rand_bevel_w: f64 = rng.gen_range(0.01..0.15);
+                        bevel_width_scale.set_value(rand_bevel_w);
+                    }
+                    if rand_lighting == 1 {
+                        let rand_light_angle: f64 = rng.gen_range(0.0..360.0);
+                        light_angle_scale.set_value(rand_light_angle);
+                    }
                 }
-                if rand_lighting == 1 {
-                    let rand_bevel_w: f64 = rng.gen_range(0.01..0.15);
-                    bevel_width_scale.set_value(rand_bevel_w);
+
+                // --- Blur ---
+                // Pick a random blur type (0=None, 1=Gaussian, 2=Tilt-Shift,
+                // 3=Radial, 4=Vignette, 5=Directional)
+                let rand_blur: u32 = rng.gen_range(0..6);
+                blur_type_row.set_selected(rand_blur);
+                // The blur_type_row handler manages visibility; set sub-values.
+                if rand_blur != 0 {
+                    let rand_blur_str: f64 = rng.gen_range(0.0..1.0);
+                    blur_strength_scale.set_value(rand_blur_str);
                 }
-                if rand_lighting == 2 {
-                    let rand_light_angle: f64 = rng.gen_range(0.0..360.0);
-                    light_angle_scale.set_value(rand_light_angle);
+                if rand_blur == 2 || rand_blur == 5 {
+                    let rand_blur_angle: f64 = rng.gen_range(0.0..360.0);
+                    blur_angle_scale.set_value(rand_blur_angle);
+                }
+
+                // --- Bloom/Glow ---
+                let rand_bloom: bool = rng.gen_bool(0.3); // 30% chance
+                bloom_switch.set_active(rand_bloom);
+                if rand_bloom {
+                    let rand_threshold: f64 = rng.gen_range(0.0..1.0);
+                    bloom_threshold_scale.set_value(rand_threshold);
+                    let rand_intensity: f64 = rng.gen_range(0.0..3.0);
+                    bloom_intensity_scale.set_value(rand_intensity);
+                }
+
+                // --- Chromatic Aberration ---
+                let rand_chromatic: bool = rng.gen_bool(0.3); // 30% chance
+                chromatic_switch.set_active(rand_chromatic);
+                if rand_chromatic {
+                    let rand_chrom_str: f64 = rng.gen_range(0.0..1.0);
+                    chromatic_strength_scale.set_value(rand_chrom_str);
+                    let rand_chrom_angle: f64 = rng.gen_range(0.0..360.0);
+                    chromatic_angle_scale.set_value(rand_chrom_angle);
                 }
             });
         }
@@ -1513,8 +1956,8 @@ impl WallrusWindow {
                 gl_area.make_current();
 
                 let pixels = {
-                    let state_ref = state.borrow();
-                    match state_ref.as_ref() {
+                    let mut state_ref = state.borrow_mut();
+                    match state_ref.as_mut() {
                         Some(renderer) => renderer.render_to_pixels(w as i32, h as i32),
                         None => {
                             show_toast(&window_ref, "Renderer not initialized");
@@ -1627,8 +2070,8 @@ impl WallrusWindow {
                 gl_area.make_current();
 
                 let pixels = {
-                    let state_ref = state.borrow();
-                    match state_ref.as_ref() {
+                    let mut state_ref = state.borrow_mut();
+                    match state_ref.as_mut() {
                         Some(renderer) => renderer.render_to_pixels(w as i32, h as i32),
                         None => {
                             show_toast(&window_ref, "Renderer not initialized");

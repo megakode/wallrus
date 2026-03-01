@@ -34,6 +34,21 @@ pub fn fragment_source_for(name: &str) -> Option<String> {
     Some(assemble(src))
 }
 
+/// Returns the blur post-processing fragment shader source
+pub fn blur_fragment_source() -> String {
+    include_str!("../data/shaders/blur.glsl").to_string()
+}
+
+/// Returns the bloom/glow post-processing fragment shader source
+pub fn bloom_fragment_source() -> String {
+    include_str!("../data/shaders/bloom.glsl").to_string()
+}
+
+/// Returns the chromatic aberration post-processing fragment shader source
+pub fn chromatic_fragment_source() -> String {
+    include_str!("../data/shaders/chromatic.glsl").to_string()
+}
+
 /// Which UI controls a preset uses
 pub struct PresetControls {
     pub has_angle: bool,
@@ -66,7 +81,7 @@ pub fn controls_for(name: &str) -> PresetControls {
             has_center: false,
             speed_label: "Time",
             speed_range: (0.0, 20.0, 0.1, 0.0),
-            scale_range: (0.1, 5.0, 0.1, 1.0),
+            scale_range: (0.1, 2.0, 0.1, 1.0),
         },
         "Waves" => PresetControls {
             has_angle: true,
