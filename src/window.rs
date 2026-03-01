@@ -42,13 +42,12 @@ impl WallrusWindow {
         // Wrap in an AspectFrame so the preview keeps 16:9
         let aspect_frame = gtk4::AspectFrame::new(0.5, 0.5, 16.0 / 9.0, false);
         aspect_frame.set_child(Some(&gl_area));
-        aspect_frame.set_vexpand(true);
+        aspect_frame.set_hexpand(true);
 
-        // Preview group — matches PreferencesGroup styling used on the left column
-        let preview_group = adw::PreferencesGroup::new();
-        preview_group.set_title("Preview");
-        preview_group.add(&aspect_frame);
-        preview_group.set_vexpand(true);
+        // Preview label
+        let preview_label = gtk4::Label::new(Some("Preview"));
+        preview_label.add_css_class("title-4");
+        preview_label.set_halign(gtk4::Align::Start);
 
         // --- Shader preset dropdown ---
         let preset_names = shader_presets::preset_names();
@@ -705,13 +704,21 @@ impl WallrusWindow {
         resolution_row.set_model(Some(&resolution_list));
         resolution_row.set_selected(0); // Default to Display
 
-        let export_button = gtk4::Button::with_label("Export");
+        let export_button = gtk4::Button::new();
         export_button.add_css_class("pill");
         export_button.set_tooltip_text(Some("Export image (Ctrl+E)"));
+        let export_btn_content = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+        export_btn_content.append(&gtk4::Image::from_icon_name("document-save-symbolic"));
+        export_btn_content.append(&gtk4::Label::new(Some("Export")));
+        export_button.set_child(Some(&export_btn_content));
 
-        let set_wallpaper_button = gtk4::Button::with_label("Set as Wallpaper");
+        let set_wallpaper_button = gtk4::Button::new();
         set_wallpaper_button.add_css_class("pill");
         set_wallpaper_button.set_tooltip_text(Some("Set as desktop wallpaper (Ctrl+Shift+W)"));
+        let wallpaper_btn_content = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+        wallpaper_btn_content.append(&gtk4::Image::from_icon_name("video-display-symbolic"));
+        wallpaper_btn_content.append(&gtk4::Label::new(Some("Set as Wallpaper")));
+        set_wallpaper_button.set_child(Some(&wallpaper_btn_content));
 
         let button_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         button_box.set_halign(gtk4::Align::Center);
@@ -763,7 +770,10 @@ impl WallrusWindow {
         right_box.set_margin_top(0);
         right_box.set_margin_bottom(12);
         right_box.set_hexpand(true);
-        right_box.append(&preview_group);
+        right_box.append(&preview_label);
+        aspect_frame.set_vexpand(true);
+        right_box.append(&aspect_frame);
+
         right_box.append(&palette_group);
         right_box.append(&export_group);
         right_box.append(&button_box);
