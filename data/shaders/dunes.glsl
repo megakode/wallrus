@@ -8,12 +8,9 @@ uniform float uSpeed;
 
 // common.glsl inserted here
 
-// Each dune layer: a sine wave at a given vertical position
-// Returns a smooth gradient: 1.0 well below the wave, 0.0 well above
-float duneLayer(float x, float y, float baseY, float freq, float phase, float amplitude) {
-    float wave = baseY + sin(x * freq + phase) * amplitude;
-    // Wide soft edge so palette transitions are smooth
-    return smoothstep(wave + 0.08, wave - 0.08, y);
+// Compute sine wave y-position for a dune layer
+float duneWave(float x, float baseY, float freq, float phase, float amplitude) {
+    return baseY + sin(x * freq + phase) * amplitude;
 }
 
 out vec4 fragColor;
@@ -26,18 +23,54 @@ void main() {
 
     // Stack of dune silhouettes, same frequency but phase-offset from each other
     float freq = 1.5;
-    // Layer 0: background (top)
-    float l0 = duneLayer(x, y, 0.20, freq, 0.0, 0.03);
-    // Layer 1
-    float l1 = duneLayer(x, y, 0.40, freq, 2.5, 0.04);
-    // Layer 2
-    float l2 = duneLayer(x, y, 0.60, freq, 5.3, 0.03);
-    // Layer 3: foreground (bottom)
-    float l3 = duneLayer(x, y, 0.80, freq, 8.7, 0.035);
 
-    // Combine: each layer advances through the palette
-    float t = l0 * 0.25 + l1 * 0.25 + l2 * 0.25 + l3 * 0.25;
-    t = clamp(t, 0.0, 1.0);
+    // Compute wave positions (top to bottom)
+    float w0 = duneWave(x, 0.20, freq, 0.0,  0.07);
+    float w1 = duneWave(x, 0.40, freq, 2.5,  0.08);
+    float w2 = duneWave(x, 0.60, freq, 5.3,  0.07);
+    float w3 = duneWave(x, 0.80, freq, 8.7,  0.075);
+
+    // Thin edge to preserve sine shape faithfully
+    float edge = 0.005;
+
+    // Silhouette masks: 1.0 below wave, 0.0 above
+    float below0 = smoothstep(w0 + edge, w0 - edge, y);
+    float below1 = smoothstep(w1 + edge, w1 - edge, y);
+    float below2 = smoothstep(w2 + edge, w2 - edge, y);
+    float below3 = smoothstep(w3 + edge, w3 - edge, y);
+
+    // Determine which band the pixel is in and compute a smooth t.
+    //
+    // UV y=0 is bottom, y=1 is top. w3 (baseY=0.80) is the highest wave,
+    // w0 (baseY=0.20) is the lowest. belowN=1 means y < wN (pixel is
+    // geometrically below wave N on screen).
+    //
+    // Check from highest wave down. If not below w3, pixel is in the sky
+    // above all dunes. If below w3 but not w2, pixel is in the top band, etc.
+    float t;
+    if (below3 < 0.5) {
+        // Above all waves: sky
+        t = 0.0;
+    } else if (below2 < 0.5) {
+        // Between wave 3 (top) and wave 2
+        float localT = (w3 - y) / max(w3 - w2, 0.001);
+        localT = clamp(localT, 0.0, 1.0);
+        t = mix(0.0, 0.25, localT);
+    } else if (below1 < 0.5) {
+        // Between wave 2 and wave 1
+        float localT = (w2 - y) / max(w2 - w1, 0.001);
+        localT = clamp(localT, 0.0, 1.0);
+        t = mix(0.25, 0.50, localT);
+    } else if (below0 < 0.5) {
+        // Between wave 1 and wave 0
+        float localT = (w1 - y) / max(w1 - w0, 0.001);
+        localT = clamp(localT, 0.0, 1.0);
+        t = mix(0.50, 0.75, localT);
+    } else {
+        // Below wave 0: foreground band (bottom of screen)
+        float localT = smoothstep(w0, w0 - 0.20, y);
+        t = mix(0.75, 1.0, localT);
+    }
 
     vec3 color = paletteColor(t);
     color = applyLighting(color, t, uv);
