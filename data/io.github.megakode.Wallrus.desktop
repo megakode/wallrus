@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Wallrus
-Comment=Generate abstract wallpapers using shaders
+Comment=Create colorful abstract wallpapers
 Exec=wallrus
 Icon=io.github.megakode.Wallrus
 Terminal=false
