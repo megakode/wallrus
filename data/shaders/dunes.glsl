@@ -56,7 +56,7 @@ void main() {
     // Edge width for wave boundary transitions.
     // Controls how wide the blend zone is at each wave crest.
     // Scaled by uBlend so blend=0 gives sharp edges, blend=1 gives soft transitions.
-    float edge = 0.005 + uBlend * 0.08;
+    float edge = 0.005 + uBlend * 0.18;
 
     // Silhouette masks: 1.0 when y < wave (pixel below wave on screen)
     float below0 = smoothstep(w0 + edge, w0 - edge, y);
