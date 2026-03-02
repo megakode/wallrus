@@ -512,14 +512,22 @@ impl WallrusWindow {
         distort_strength_hint_row.set_selectable(false);
         distort_strength_hint_row.set_visible(false); // hidden when "None"
 
+        // --- Effect type dropdown ---
+        let effect_type_list =
+            gtk4::StringList::new(&["None", "Noise", "Dither", "Film Grain"]);
+        let effect_type_row = adw::ComboRow::new();
+        effect_type_row.set_title("Type");
+        effect_type_row.set_model(Some(&effect_type_list));
+        effect_type_row.set_selected(0);
+
         // --- Noise slider ---
-        let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -1.0, 1.0, 0.01);
+        let noise_scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, -0.5, 0.5, 0.01);
         noise_scale.set_value(0.0);
         noise_scale.set_hexpand(true);
         noise_scale.set_draw_value(true);
         noise_scale.set_value_pos(gtk4::PositionType::Right);
 
-        let noise_row = adw::ActionRow::builder().title("Noise").build();
+        let noise_row = adw::ActionRow::builder().title("Strength").build();
         noise_row.add_suffix(&noise_scale);
         let noise_reset = gtk4::Button::from_icon_name("edit-clear-symbolic");
         noise_reset.add_css_class("flat");
@@ -527,6 +535,7 @@ impl WallrusWindow {
         noise_reset.set_valign(gtk4::Align::Center);
         noise_reset.set_tooltip_text(Some("Reset to 0"));
         noise_row.add_suffix(&noise_reset);
+        noise_row.set_visible(false);
 
         // Hint labels below the noise slider
         let noise_hints = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -549,13 +558,7 @@ impl WallrusWindow {
         noise_hint_row.set_child(Some(&noise_hints));
         noise_hint_row.set_activatable(false);
         noise_hint_row.set_selectable(false);
-
-        // --- Dither switch ---
-        let dither_row = adw::ActionRow::new();
-        dither_row.set_title("Dither");
-        let dither_switch = gtk4::Switch::new();
-        dither_switch.set_valign(gtk4::Align::Center);
-        dither_row.add_suffix(&dither_switch);
+        noise_hint_row.set_visible(false);
 
         // --- Dither strength slider ---
         let dither_strength_scale =
@@ -579,6 +582,17 @@ impl WallrusWindow {
         dither_levels_row.add_suffix(&dither_levels_scale);
         dither_levels_row.set_visible(false);
 
+        // --- Film grain intensity slider ---
+        let grain_intensity_scale =
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 0.3, 0.01);
+        grain_intensity_scale.set_value(0.3);
+        grain_intensity_scale.set_hexpand(true);
+        grain_intensity_scale.set_draw_value(true);
+        grain_intensity_scale.set_value_pos(gtk4::PositionType::Right);
+        let grain_intensity_row = adw::ActionRow::builder().title("Intensity").build();
+        grain_intensity_row.add_suffix(&grain_intensity_scale);
+        grain_intensity_row.set_visible(false);
+
         let distortion_group = adw::PreferencesGroup::new();
         distortion_group.set_title("Distortion");
         distortion_group.add(&distort_row);
@@ -586,12 +600,13 @@ impl WallrusWindow {
         distortion_group.add(&distort_strength_hint_row);
 
         let effects_group = adw::PreferencesGroup::new();
-        effects_group.set_title("Effects");
+        effects_group.set_title("Grain");
+        effects_group.add(&effect_type_row);
         effects_group.add(&noise_row);
         effects_group.add(&noise_hint_row);
-        effects_group.add(&dither_row);
         effects_group.add(&dither_strength_row);
         effects_group.add(&dither_levels_row);
+        effects_group.add(&grain_intensity_row);
 
         // =====================================================================
         // Lighting section
@@ -1499,6 +1514,33 @@ impl WallrusWindow {
             });
         }
 
+        // --- Effect type dropdown change ---
+        {
+            let state = state.clone();
+            let noise_row = noise_row.clone();
+            let noise_hint_row = noise_hint_row.clone();
+            let dither_strength_row = dither_strength_row.clone();
+            let dither_levels_row = dither_levels_row.clone();
+            let grain_intensity_row = grain_intensity_row.clone();
+            effect_type_row.connect_selected_notify(move |row| {
+                let idx = row.selected() as i32;
+                // Show/hide sub-controls based on selection
+                let is_noise = idx == 1;
+                let is_dither = idx == 2;
+                let is_grain = idx == 3;
+                noise_row.set_visible(is_noise);
+                noise_hint_row.set_visible(is_noise);
+                dither_strength_row.set_visible(is_dither);
+                dither_levels_row.set_visible(is_dither);
+                grain_intensity_row.set_visible(is_grain);
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.effect_type = idx;
+                    // Set dither flag for shader compatibility
+                    renderer.dither = if is_dither { 1.0 } else { 0.0 };
+                }
+            });
+        }
+
         // --- Noise change ---
         {
             let state = state.clone();
@@ -1514,21 +1556,6 @@ impl WallrusWindow {
             let noise_scale = noise_scale.clone();
             noise_reset.connect_clicked(move |_| {
                 noise_scale.set_value(0.0);
-            });
-        }
-
-        // --- Dither enable change ---
-        {
-            let state = state.clone();
-            let dither_strength_row = dither_strength_row.clone();
-            let dither_levels_row = dither_levels_row.clone();
-            dither_switch.connect_active_notify(move |switch| {
-                let active = switch.is_active();
-                dither_strength_row.set_visible(active);
-                dither_levels_row.set_visible(active);
-                if let Some(ref mut renderer) = *state.borrow_mut() {
-                    renderer.dither = if active { 1.0 } else { 0.0 };
-                }
             });
         }
 
@@ -1548,6 +1575,16 @@ impl WallrusWindow {
             dither_levels_scale.connect_value_changed(move |scale| {
                 if let Some(ref mut renderer) = *state.borrow_mut() {
                     renderer.dither_levels = scale.value() as f32;
+                }
+            });
+        }
+
+        // --- Grain intensity change ---
+        {
+            let state = state.clone();
+            grain_intensity_scale.connect_value_changed(move |scale| {
+                if let Some(ref mut renderer) = *state.borrow_mut() {
+                    renderer.grain_intensity = scale.value() as f32;
                 }
             });
         }
@@ -1796,9 +1833,10 @@ impl WallrusWindow {
             let distort_row = distort_row.clone();
             let distort_strength_scale = distort_strength_scale.clone();
             let noise_scale = noise_scale.clone();
-            let dither_switch = dither_switch.clone();
+            let effect_type_row = effect_type_row.clone();
             let dither_strength_scale = dither_strength_scale.clone();
             let dither_levels_scale = dither_levels_scale.clone();
+            let grain_intensity_scale = grain_intensity_scale.clone();
             let lighting_switch = lighting_switch.clone();
             let lighting_row = lighting_row.clone();
             let light_strength_scale = light_strength_scale.clone();
@@ -1926,21 +1964,29 @@ impl WallrusWindow {
                     distort_strength_scale.set_value(rand_distort_str);
                 }
 
-                // --- Effects ---
-                // Noise (-0.2 to 0.2)
-                let rand_noise: f64 = rng.gen_range(-0.2..0.2);
-                noise_scale.set_value(rand_noise);
-
-                // Dither (50% chance on)
-                let rand_dither_on: bool = rng.gen_bool(0.5);
-                dither_switch.set_active(rand_dither_on);
-                if rand_dither_on {
-                    // Strength 0.2–0.8
-                    let rand_strength: f64 = rng.gen_range(0.5..1.0);
-                    dither_strength_scale.set_value(rand_strength);
-                    // Levels 2–8
-                    let rand_levels: f64 = rng.gen_range(2.0_f64..9.0).floor();
-                    dither_levels_scale.set_value(rand_levels);
+                // --- Grain & Texture ---
+                // Equal probability: 0=None, 1=Noise, 2=Dither, 3=Film Grain
+                let rand_effect: u32 = rng.gen_range(0..4);
+                effect_type_row.set_selected(rand_effect);
+                match rand_effect {
+                    1 => {
+                        // Noise (-0.2 to 0.2)
+                        let rand_noise: f64 = rng.gen_range(-0.2..0.2);
+                        noise_scale.set_value(rand_noise);
+                    }
+                    2 => {
+                        // Dither: strength 0.5–1.0, levels 2–8
+                        let rand_strength: f64 = rng.gen_range(0.5..1.0);
+                        dither_strength_scale.set_value(rand_strength);
+                        let rand_levels: f64 = rng.gen_range(2.0_f64..9.0).floor();
+                        dither_levels_scale.set_value(rand_levels);
+                    }
+                    3 => {
+                        // Film Grain: intensity 0.05–0.3
+                        let rand_intensity: f64 = rng.gen_range(0.05..0.3);
+                        grain_intensity_scale.set_value(rand_intensity);
+                    }
+                    _ => {} // None — no sub-controls to set
                 }
 
                 // --- Lighting ---

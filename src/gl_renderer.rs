@@ -78,11 +78,13 @@ pub struct RendererState {
     pub blend: f32,
     pub distort_type: i32,
     pub distort_strength: f32,
+    pub effect_type: i32, // 0=none, 1=noise, 2=dither, 3=film grain
     pub noise: f32,
     pub center: f32,
     pub dither: f32,
     pub dither_strength: f32,
     pub dither_levels: f32,
+    pub grain_intensity: f32,
     pub variation: f32,
     // Shader uniforms — lighting
     pub lighting_type: i32,
@@ -234,11 +236,13 @@ impl RendererState {
             blend: 0.5,
             distort_type: 0,
             distort_strength: 0.0,
+            effect_type: 0,
             noise: 0.0,
             center: 0.0,
             dither: 0.0,
             dither_strength: 0.5,
             dither_levels: 4.0,
+            grain_intensity: 0.3,
             variation: 0.0,
             lighting_type: 0,
             light_strength: 0.0,
@@ -312,11 +316,7 @@ impl RendererState {
 
     /// Returns true if any post-processing effect is active.
     fn has_active_postprocess(&self) -> bool {
-        self.blur_type != 0
-            || self.bloom_enabled
-            || self.chromatic_enabled
-            || self.noise != 0.0
-            || self.dither > 0.5
+        self.blur_type != 0 || self.bloom_enabled || self.chromatic_enabled || self.effect_type != 0
     }
 
     /// Render the pattern shader (single pass) into the currently bound FBO.
@@ -475,7 +475,7 @@ impl RendererState {
         if self.chromatic_enabled && self.chromatic_program.is_some() {
             passes.push(PpPass::Chromatic);
         }
-        if (self.noise != 0.0 || self.dither > 0.5) && self.effects_program.is_some() {
+        if self.effect_type != 0 && self.effects_program.is_some() {
             passes.push(PpPass::Effects);
         }
 
@@ -578,16 +578,21 @@ impl RendererState {
                     );
                 }
                 PpPass::Effects => {
+                    let effect_type = self.effect_type;
                     let noise = self.noise;
                     let dither = self.dither;
                     let dither_strength = self.dither_strength;
                     let dither_levels = self.dither_levels;
+                    let grain_intensity = self.grain_intensity;
                     self.run_pp_pass(
                         self.effects_program.as_ref().unwrap(),
                         src_texture,
                         width,
                         height,
                         |gl, prog| unsafe {
+                            if let Some(loc) = gl.get_uniform_location(prog, "uEffectType") {
+                                gl.uniform_1_i32(Some(&loc), effect_type);
+                            }
                             if let Some(loc) = gl.get_uniform_location(prog, "uNoise") {
                                 gl.uniform_1_f32(Some(&loc), noise);
                             }
@@ -599,6 +604,9 @@ impl RendererState {
                             }
                             if let Some(loc) = gl.get_uniform_location(prog, "uDitherLevels") {
                                 gl.uniform_1_f32(Some(&loc), dither_levels);
+                            }
+                            if let Some(loc) = gl.get_uniform_location(prog, "uGrainIntensity") {
+                                gl.uniform_1_f32(Some(&loc), grain_intensity);
                             }
                         },
                     );
