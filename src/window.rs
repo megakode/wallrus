@@ -533,7 +533,7 @@ impl WallrusWindow {
 
         // --- Dither strength slider ---
         let dither_strength_scale =
-            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.01);
+            gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.5, 1.0, 0.01);
         dither_strength_scale.set_value(0.5);
         dither_strength_scale.set_hexpand(true);
         dither_strength_scale.set_draw_value(true);
@@ -1006,7 +1006,7 @@ impl WallrusWindow {
         left_scroll.set_vexpand(true);
         left_scroll.set_hscrollbar_policy(gtk4::PolicyType::Never);
         left_scroll.set_propagate_natural_height(true);
-        left_scroll.set_min_content_width(320);
+        left_scroll.set_width_request(400);
 
         // Right column: preview + palette + export
         let right_box = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
@@ -1039,8 +1039,8 @@ impl WallrusWindow {
         let window = adw::ApplicationWindow::builder()
             .application(app)
             .title("Wallrus")
-            .default_width(1300)
-            .default_height(900)
+            .default_width(1000)
+            .default_height(1024)
             .content(&toast_overlay)
             .build();
 
@@ -1927,7 +1927,7 @@ impl WallrusWindow {
                 dither_switch.set_active(rand_dither_on);
                 if rand_dither_on {
                     // Strength 0.2–0.8
-                    let rand_strength: f64 = rng.gen_range(0.2..0.8);
+                    let rand_strength: f64 = rng.gen_range(0.5..1.0);
                     dither_strength_scale.set_value(rand_strength);
                     // Levels 2–8
                     let rand_levels: f64 = rng.gen_range(2.0_f64..9.0).floor();
