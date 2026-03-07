@@ -33,6 +33,18 @@
   </branding>
   <content_rating type="oars-1.1" />
   <releases>
+
+    <release version="1.2.1" date="2026-03-07">
+    <description>
+        <ul>
+        <li>New pattern types: Dunes, Spark</li>
+        <li>Button to generate random presets</li>
+        <li>New effect types</li>
+        <li>Ability to save custom palettes</li>
+        </ul>
+    </description>
+    </release>
+  
     <release version="1.1.0" date="2026-02-26">
     <description>
         <ul>
