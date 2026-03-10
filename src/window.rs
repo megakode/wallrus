@@ -2186,8 +2186,11 @@ impl WallrusWindow {
                     }
                 };
 
-                // Save to a temporary file and hand it to the portal
-                let tmp_path = std::env::temp_dir().join("wallrus_wallpaper.png");
+                // Save to a temporary file and hand it to the portal.
+                // Use the user cache dir instead of the system temp dir so that
+                // the XDG Desktop Portal (running outside the Flatpak sandbox)
+                // can resolve the file descriptor to a real path.
+                let tmp_path = glib::user_cache_dir().join("wallrus_wallpaper.png");
                 if let Err(e) = export::save_pixels(&pixels, w, h, &tmp_path, ExportFormat::Png) {
                     show_toast(&window_ref, &format!("Failed to save: {}", e));
                     return;
@@ -2195,7 +2198,7 @@ impl WallrusWindow {
 
                 let window_ref2 = window_ref.clone();
                 glib::MainContext::default().spawn_local(async move {
-                    match wallpaper::set_wallpaper(&tmp_path).await {
+                    match wallpaper::set_wallpaper(&tmp_path, &window_ref2).await {
                         Ok(()) => show_toast(&window_ref2, "Wallpaper set!"),
                         Err(e) => show_toast(&window_ref2, &format!("Failed: {}", e)),
                     }

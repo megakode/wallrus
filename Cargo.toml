@@ -12,7 +12,7 @@ libadwaita = { version = "0.7", features = ["v1_4"] }
 glow = "0.14"
 image = "0.25"
 libc = "0.2"
-ashpd = "0.9"
+ashpd = { version = "0.9", features = ["gtk4"] }
 rand = "0.8"
 
 [profile.release]
